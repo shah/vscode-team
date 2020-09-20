@@ -10,7 +10,7 @@ The main control utility is called `teamctl.ts` and depends on Deno. The followi
 instructions assume Deno is installed and an alias `deno-run` which resolves to
 `deno run -A --unstable` has been setup.
 
-First, let's check out what the `wsctl.ts` script can do:
+First, let's check out what the `teamctl.ts` script can do:
 
 ```bash
 ❯ deno-run teamctl.ts --help
