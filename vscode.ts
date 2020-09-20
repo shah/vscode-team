@@ -1,5 +1,6 @@
 import { fs, path } from "./deps.ts";
 import * as ca from "./code-artifacts.ts";
+import * as shell from "./shell.ts";
 
 export type VsCodeWorkspaceFsPFN = ca.FsPathAndFileName;
 
@@ -260,6 +261,116 @@ export function vsCodeWorkspaceFolders(
     });
   }
   return result;
+}
+
+export async function setupWorkspaces(
+  ctx:
+    & { workspacesMasterRepo: ca.FsPathOnly }
+    & ca.GitReposContext
+    & {
+      readonly dryRun: boolean;
+      readonly verbose: boolean;
+    },
+): Promise<void> {
+  if (!ca.isValidGitReposContext(ctx)) return;
+  if (ctx.verbose) {
+    console.log(
+      `Setting up ${ctx.workspacesMasterRepo} *.code-workspace files into ${ctx.reposHomePath}`,
+    );
+  }
+  for (
+    const walkEntry of fs.walkSync(ctx.workspacesMasterRepo, {
+      maxDepth: 1,
+    })
+  ) {
+    if (
+      walkEntry.isFile &&
+      (walkEntry.name == "wsctl.ts" ||
+        walkEntry.name.endsWith(".code-workspace"))
+    ) {
+      const srcPath = path.join(
+        path.isAbsolute(ctx.workspacesMasterRepo)
+          ? ctx.workspacesMasterRepo
+          : path.join(Deno.cwd(), ctx.workspacesMasterRepo),
+        walkEntry.name,
+      );
+      const destPath = path.join(
+        ctx.reposHomePath,
+        walkEntry.name,
+      );
+      if (ctx.dryRun) {
+        console.log(`rm -f ${destPath}`);
+        console.log(`ln -s ${srcPath} ${destPath}`);
+      } else {
+        if (fs.existsSync(destPath)) {
+          Deno.removeSync(destPath, { recursive: true });
+          if (ctx.verbose) console.log(`Removed ${destPath}`);
+        }
+        fs.ensureSymlinkSync(srcPath, destPath);
+        if (ctx.verbose) {
+          console.log(`Created symlink ${destPath} -> ${srcPath}`);
+        }
+      }
+    }
+  }
+}
+
+export async function gitCloneVsCodeFolders(
+  ctx:
+    & VsCodeWorkspacesContext
+    & ca.GitReposContext
+    & {
+      readonly dryRun: boolean;
+      readonly verbose: boolean;
+    },
+): Promise<void> {
+  if (!ca.isValidGitReposContext(ctx)) return;
+  const cloneRuns: Promise<void>[] = [];
+  vsCodeWorkspaceFolders(ctx).forEach((vscwsFolderCtx) => {
+    const cloneCtx = (vscwsFolderCtx as unknown) as (
+      & ca.GitReposContext
+      & {
+        readonly dryRun: boolean;
+        readonly verbose: boolean;
+      }
+    );
+    const repoPath = path.join(
+      cloneCtx.reposHomePath,
+      vscwsFolderCtx.folder.path,
+    );
+    if (!fs.existsSync(repoPath)) {
+      const repoPathParent = path.dirname(repoPath);
+      if (!fs.existsSync(repoPathParent)) {
+        if (cloneCtx.dryRun) {
+          console.log(`mkdir -p ${repoPathParent}`);
+        } else {
+          Deno.mkdirSync(repoPathParent, { recursive: true });
+        }
+      }
+      cloneRuns.push(
+        shell.runShellCommand(
+          cloneCtx,
+          `git clone --quiet https://${vscwsFolderCtx.folder.path} ${repoPath}`,
+          shell.prepShellCmdStdOutReporter(
+            shell.postShellCmdBlockStatusReporter(
+              `Cloned https://${vscwsFolderCtx.folder.path} into ${repoPath}`,
+            ),
+          ),
+        ),
+      );
+    } else {
+      if (cloneCtx.verbose) {
+        const relativeRepoPath = path.relative(
+          cloneCtx.reposHomePath,
+          repoPath,
+        );
+        console.log(
+          `Repo ${relativeRepoPath} already exists in ${cloneCtx.reposHomePath}`,
+        );
+      }
+    }
+  });
+  await Promise.all(cloneRuns);
 }
 
 export async function copyVsCodeSettingsFromGitHub(
