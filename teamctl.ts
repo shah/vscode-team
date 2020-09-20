@@ -1,6 +1,9 @@
 import { docopt as cli } from "./deps.ts";
 import * as mod from "./mod.ts";
 
+// TODO: find way to automatically update this, e.g. using something like
+//       git describe --exact-match --abbrev=0
+const $VERSION = "v0.5.7";
 const docoptSpec = `
 Visual Studio Team Projects Controller.
 
@@ -46,9 +49,22 @@ export async function setupOrUpgradeHandler(
   }
 }
 
+export async function versionHandler(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const {
+    "--version": version,
+  } = options;
+  if (version) {
+    console.log($VERSION);
+    return true;
+  }
+}
+
 if (import.meta.main) {
   const handlers: CommandHandler[] = [
     setupOrUpgradeHandler,
+    versionHandler,
   ];
   try {
     const options = cli.default(docoptSpec);
