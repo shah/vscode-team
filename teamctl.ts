@@ -31,14 +31,20 @@ export async function copyVsCodeSettingsFromGitHub(
     readonly verbose: boolean;
   },
 ): Promise<void> {
+  const runningInVsCodeTeamRepo = path.basename(Deno.cwd()) == "vscode-team";
+  const vsCodeSettingsHome = ".vscode";
   await ca.copySourceToDest(
     [
-      `https://github.com/shah/vscode-team/blob/master/${projectType}.vscode/settings.json`,
-      `https://github.com/shah/vscode-team/blob/master/${projectType}.vscode/extensions.json`,
+      `https://raw.githubusercontent.com/shah/vscode-team/master/${projectType}.vscode/settings.json`,
+      `https://raw.githubusercontent.com/shah/vscode-team/master/${projectType}.vscode/extensions.json`,
     ],
-    options?.projectHomePath || ".",
+    options?.projectHomePath
+      ? `${options.projectHomePath}/${vsCodeSettingsHome}`
+      : vsCodeSettingsHome,
     {
-      dryRun: options?.dryRun || false,
+      // if we're testing in the main repo, don't overwrite files
+      dryRun: options?.dryRun || runningInVsCodeTeamRepo ||
+        false,
       verbose: options?.verbose || false,
     },
   );

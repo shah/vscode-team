@@ -259,7 +259,9 @@ export async function copySourceToDest(
         if (dryRun) {
           console.log(`Download ${src} ${dest}`);
         } else {
-          await dl.download(src, { dir: dest });
+          await dl.download(src, { dir: dest }, {
+            redirect: "follow",
+          });
         }
       } else {
         if (dryRun) {
