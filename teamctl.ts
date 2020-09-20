@@ -1,13 +1,12 @@
 import * as ca from "./code-artifacts.ts";
-import { docopt as cli, fs, path } from "./deps.ts";
-import * as vsc from "./vscode.ts";
+import { docopt as cli, path } from "./deps.ts";
 
 const docoptSpec = `
 Visual Studio Team Projects Controller.
 
 Usage:
-  teamctl.ts setup deno [<project-home>] [--dry-run] [--verbose]
-  teamctl.ts upgrade deno [--dry-run] [--verbose]
+  teamctl.ts setup deno [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  teamctl.ts upgrade deno [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   teamctl.ts -h | --help
   teamctl.ts --version
 
@@ -15,6 +14,7 @@ Options:
   -h --help         Show this screen
   --version         Show version
   <project-home>    The root of the project folder (usually ".")
+  --tag=<tag>       A specific version of the settings to use (default: "master")
   --dry-run         Show what will happen instead of executing
   --verbose         Be descriptive about what's going on
 `;
@@ -26,17 +26,19 @@ export interface CommandHandler {
 export async function copyVsCodeSettingsFromGitHub(
   projectType: "deno",
   options?: {
-    readonly projectHomePath: ca.FsPathOnly;
-    readonly dryRun: boolean;
-    readonly verbose: boolean;
+    readonly srcRepoTag?: string;
+    readonly projectHomePath?: ca.FsPathOnly;
+    readonly dryRun?: boolean;
+    readonly verbose?: boolean;
   },
 ): Promise<void> {
   const runningInVsCodeTeamRepo = path.basename(Deno.cwd()) == "vscode-team";
   const vsCodeSettingsHome = ".vscode";
+  const version = options?.srcRepoTag || "master";
   await ca.copySourceToDest(
     [
-      `https://raw.githubusercontent.com/shah/vscode-team/master/${projectType}.vscode/settings.json`,
-      `https://raw.githubusercontent.com/shah/vscode-team/master/${projectType}.vscode/extensions.json`,
+      `https://raw.githubusercontent.com/shah/vscode-team/${version}/${projectType}.vscode/settings.json`,
+      `https://raw.githubusercontent.com/shah/vscode-team/${version}/${projectType}.vscode/extensions.json`,
     ],
     options?.projectHomePath
       ? `${options.projectHomePath}/${vsCodeSettingsHome}`
@@ -58,11 +60,17 @@ export async function setupOrUpgradeHandler(
     upgrade,
     deno,
     "<project-home>": projectHomePath,
+    "--tag": tag,
     "--dry-run": dryRun,
     "--verbose": verbose,
   } = options;
   if ((setup || upgrade) && deno) {
-    copyVsCodeSettingsFromGitHub("deno");
+    copyVsCodeSettingsFromGitHub("deno", {
+      srcRepoTag: tag ? tag.toString() : undefined,
+      projectHomePath: projectHomePath ? projectHomePath.toString() : undefined,
+      dryRun: dryRun ? true : false,
+      verbose: verbose ? true : false,
+    });
     return true;
   }
 }
