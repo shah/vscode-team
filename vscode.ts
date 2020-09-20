@@ -397,6 +397,122 @@ export async function gitCloneVsCodeFolders(
   await Promise.all(cloneRuns);
 }
 
+export async function workspaceFoldersGitCommandHandler(
+  dryRun: boolean,
+  wsFileName: ca.FsPathOnly[] | ca.FsPathOnly,
+  gitCmd: string,
+  reporter?: (
+    ctx: VsCodeWorkspaceFolderContext,
+  ) => shell.ShellCmdStatusReporter,
+): Promise<void> {
+  const cmdRuns: Promise<void>[] = [];
+  vsCodeWorkspaceFolders({
+    wsFileNames: Array.isArray(wsFileName)
+      ? wsFileName
+      : [wsFileName.toString()],
+  }).forEach((ctx) => {
+    if (ca.isGitWorkTree(ctx.folder)) {
+      cmdRuns.push(shell.runShellCommand(
+        { dryRun: dryRun },
+        `git --git-dir=${ctx.folder.gitDir} --work-tree=${ctx.folder.gitWorkTree} ${gitCmd}`,
+        reporter
+          ? shell.prepShellCmdStdOutReporter(reporter(ctx))
+          : shell.shellCmdStdOutHandler,
+        shell.shellCmdStdErrHandler,
+      ));
+    }
+  });
+  await Promise.all(cmdRuns);
+}
+
+export interface NpmCommandHandlerOptions {
+  readonly dryRun: boolean;
+  readonly wsFileName: ca.FsPathOnly[] | ca.FsPathOnly;
+  readonly nodeHomePath: ca.FsPathAndFileName;
+  readonly npmCmdParams: string;
+  readonly reporter?: (
+    ctx: VsCodeWorkspaceFolderContext,
+  ) => shell.ShellCmdStatusReporter;
+  readonly filter?: (ctx: VsCodeWorkspaceFolderContext) => boolean;
+}
+
+export async function workspaceFoldersNpmCommandHandler(
+  { dryRun, wsFileName, nodeHomePath, npmCmdParams, reporter, filter }:
+    NpmCommandHandlerOptions,
+): Promise<void> {
+  if (
+    !fs.existsSync(nodeHomePath) ||
+    !fs.existsSync(path.join(nodeHomePath, "bin/npm"))
+  ) {
+    console.error(
+      `${nodeHomePath} is not a valid NodeJS Path (missing bin/npm)`,
+    );
+    return;
+  }
+  const cmdRuns: Promise<void>[] = [];
+  vsCodeWorkspaceFolders({
+    wsFileNames: Array.isArray(wsFileName)
+      ? wsFileName
+      : [wsFileName.toString()],
+  }).forEach((ctx) => {
+    if (ca.isNpmProject(ctx.folder)) {
+      if (filter && !filter(ctx)) return;
+      cmdRuns.push(shell.runShellCommand(
+        { dryRun: dryRun },
+        {
+          cwd: ctx.folder.absProjectPath,
+          cmd: shell.commandComponents(`npm ${npmCmdParams}`),
+          env: {
+            PATH: `${nodeHomePath}/bin:${Deno.env.get("PATH")}`,
+          },
+        },
+        reporter
+          ? shell.prepShellCmdStdOutReporter(reporter(ctx))
+          : shell.shellCmdStdOutHandler,
+        shell.shellCmdStdErrHandler,
+      ));
+    }
+  });
+  await Promise.all(cmdRuns);
+}
+
+export interface DenoProjectHandlerOptions {
+  readonly dryRun: boolean;
+  readonly wsFileName: ca.FsPathOnly[] | ca.FsPathOnly;
+  readonly command: (dp: ca.DenoProject) => string;
+  readonly reporter?: (
+    ctx: VsCodeWorkspaceFolderContext,
+  ) => shell.ShellCmdStatusReporter;
+  readonly filter?: (ctx: VsCodeWorkspaceFolderContext) => boolean;
+}
+
+export async function workspaceFoldersDenoProjectHandler(
+  { dryRun, wsFileName, command, reporter, filter }: DenoProjectHandlerOptions,
+): Promise<void> {
+  const cmdRuns: Promise<void>[] = [];
+  vsCodeWorkspaceFolders({
+    wsFileNames: Array.isArray(wsFileName)
+      ? wsFileName
+      : [wsFileName.toString()],
+  }).forEach((ctx) => {
+    if (ca.isDenoProject(ctx.folder)) {
+      if (filter && !filter(ctx)) return;
+      cmdRuns.push(shell.runShellCommand(
+        { dryRun: dryRun },
+        {
+          cwd: ctx.folder.absProjectPath,
+          cmd: shell.commandComponents(command(ctx.folder)),
+        },
+        reporter
+          ? shell.prepShellCmdStdOutReporter(reporter(ctx))
+          : shell.shellCmdStdOutHandler,
+        shell.shellCmdStdErrHandler,
+      ));
+    }
+  });
+  await Promise.all(cmdRuns);
+}
+
 export async function copyVsCodeSettingsFromGitHub(
   projectType: "deno",
   options?: {
