@@ -1,4 +1,4 @@
-function commandComponents(command: string): string[] {
+export function commandComponents(command: string): string[] {
   // split components of the command with double-quotes support
   const splitCmdRegExp = /[^\s"]+|"([^"]*)"/gi;
   const components = [];
