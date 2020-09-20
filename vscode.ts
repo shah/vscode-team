@@ -261,3 +261,32 @@ export function vsCodeWorkspaceFolders(
   }
   return result;
 }
+
+export async function copyVsCodeSettingsFromGitHub(
+  projectType: "deno",
+  options?: {
+    readonly srcRepoTag?: string;
+    readonly projectHomePath?: ca.FsPathOnly;
+    readonly dryRun?: boolean;
+    readonly verbose?: boolean;
+  },
+): Promise<void> {
+  const runningInVsCodeTeamRepo = path.basename(Deno.cwd()) == "vscode-team";
+  const vsCodeSettingsHome = ".vscode";
+  const version = options?.srcRepoTag || "master";
+  await ca.copySourceToDest(
+    [
+      `https://raw.githubusercontent.com/shah/vscode-team/${version}/${projectType}.vscode/settings.json`,
+      `https://raw.githubusercontent.com/shah/vscode-team/${version}/${projectType}.vscode/extensions.json`,
+    ],
+    options?.projectHomePath
+      ? `${options.projectHomePath}/${vsCodeSettingsHome}`
+      : vsCodeSettingsHome,
+    {
+      // if we're testing in the main repo, don't overwrite files
+      dryRun: options?.dryRun || runningInVsCodeTeamRepo ||
+        false,
+      verbose: options?.verbose || false,
+    },
+  );
+}
