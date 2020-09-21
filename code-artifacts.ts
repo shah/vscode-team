@@ -184,6 +184,28 @@ export function isDenoProjectByConvention(
   return o && typeof o === "object" && "isDenoProjectByConvention" in o;
 }
 
+// TODO: this is incomplete, needs implementation - it's designed to convert
+//       a Deno project from a polyrepo into a monorepo by making all imports
+//       local instead of remote.
+export async function denoRewriteImportsAsMonoRepo(
+  ctx: { projectHome: string },
+  depsGlob = "**/*/deps{-test,}.ts",
+): Promise<true | void> {
+  const matchURL = "https://denopkg.com/gov-suite/\\(.*\\)\\(@.*\\)/";
+  for (const we of fs.expandGlobSync(depsGlob)) {
+    if (we.isFile) {
+      const relative = path.relative(ctx.projectHome, we.path);
+      const relativeDirName = path.dirname(relative);
+      const monoRepoLocalDest = "../".repeat(
+        relativeDirName.split(path.sep).length + 1,
+      );
+      console.log(
+        `sed -i 's!${matchURL}!${monoRepoLocalDest}\\1!g' ${relative}`,
+      );
+    }
+  }
+}
+
 export class NpmPackageConfig extends TypicalJsonFile {
   get isValid(): boolean {
     return this.fileExists;
