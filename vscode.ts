@@ -256,9 +256,7 @@ export async function setupWorkspaces(
     })
   ) {
     if (
-      walkEntry.isFile &&
-      (walkEntry.name == "wsctl.ts" ||
-        walkEntry.name.endsWith(".code-workspace"))
+      walkEntry.isFile && walkEntry.name.endsWith(".code-workspace")
     ) {
       const srcPath = path.join(
         path.isAbsolute(ctx.workspacesMasterRepo)

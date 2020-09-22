@@ -4,7 +4,7 @@ import * as mod from "./mod.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.8.1";
+const $VERSION = "v0.8.2";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
