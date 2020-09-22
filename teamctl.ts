@@ -4,7 +4,7 @@ import * as mod from "./mod.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.7.0";
+const $VERSION = "v0.7.1";
 const docoptSpec = `
 Visual Studio Team Projects Controller.
 
@@ -115,7 +115,7 @@ export async function publishProjectHandler(
   }
 }
 
-export async function denoSetupOrUpgradeHandler(
+export async function denoSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
   const { deno, setup, upgrade, "--tag": tag } = options;
@@ -142,7 +142,7 @@ export async function denoSetupOrUpgradeHandler(
   }
 }
 
-export async function denoUpdateHandler(
+export async function denoUpdateDependenciesHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
   const { deno, update } = options;
@@ -183,9 +183,9 @@ export async function ctlVersionHandler(
 if (import.meta.main) {
   // put the shorter commands near the end of the list
   const handlers: CommandHandler[] = [
+    denoSetupOrUpgradeProjectHandler,
+    denoUpdateDependenciesHandler,
     inspectProjectHandler,
-    denoSetupOrUpgradeHandler,
-    denoUpdateHandler,
     publishProjectHandler,
     projectVersionHandler,
     ctlVersionHandler,
