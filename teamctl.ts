@@ -3,11 +3,12 @@ import * as mod from "./mod.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.6.0";
+const $VERSION = "v0.6.1";
 const docoptSpec = `
 Visual Studio Team Projects Controller.
 
 Usage:
+  teamctl.ts inspect [<project-home>]
   teamctl.ts setup deno [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   teamctl.ts upgrade deno [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   teamctl.ts deno update [--dry-run]
@@ -25,6 +26,26 @@ Options:
 
 export interface CommandHandler {
   (options: cli.DocOptions): Promise<true | void>;
+}
+
+export async function inspectHandler(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const {
+    inspect,
+    "<project-home>": projectHomePath,
+  } = options;
+  if (inspect) {
+    const pp = mod.enrichProjectPath(
+      { absProjectPath: projectHomePath ? projectHomePath.toString() : "." },
+    );
+    if (!pp.absProjectPathExists) {
+      console.error(`Path ${pp.absProjectPath} does not exist.`);
+      return true;
+    }
+    console.dir(pp);
+    return true;
+  }
 }
 
 export async function setupOrUpgradeHandler(
@@ -102,6 +123,7 @@ export async function versionHandler(
 
 if (import.meta.main) {
   const handlers: CommandHandler[] = [
+    inspectHandler,
     setupOrUpgradeHandler,
     denoUpdateHandler,
     versionHandler,
