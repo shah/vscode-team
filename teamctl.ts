@@ -1,44 +1,75 @@
+import type { ProjectPath } from "./code-artifacts.ts";
 import { docopt as cli } from "./deps.ts";
 import * as mod from "./mod.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.6.3";
+const $VERSION = "v0.7.0";
 const docoptSpec = `
 Visual Studio Team Projects Controller.
 
 Usage:
-  teamctl.ts inspect [<project-home>]
-  teamctl.ts setup deno [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
-  teamctl.ts upgrade deno [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
-  teamctl.ts deno update [--dry-run]
-  teamctl.ts -h | --help
-  teamctl.ts --version
+  teamctl inspect [<project-home>]
+  teamctl version [<project-home>]
+  teamctl publish [<project-home>] [--semtag=<version>] [--dry-run]
+  teamctl deno (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  teamctl deno update [<project-home>] [--dry-run]
+  teamctl -h | --help
+  teamctl --version
 
 Options:
-  -h --help         Show this screen
-  --version         Show version
-  <project-home>    The root of the project folder (usually ".")
-  --tag=<tag>       A specific version of the settings to use (default: "master")
-  --dry-run         Show what will happen instead of executing
-  --verbose         Be descriptive about what's going on
+  -h --help            Show this screen
+  --version            Show version
+  <project-home>       The root of the project folder (defaults to ".")
+  --tag=<tag>          A specific version of the settings to use (default: "master")
+  --semtag=<version>   A specific semantic version to apply as a tag
+  --dry-run            Show what will happen instead of executing
+  --verbose            Be descriptive about what's going on
 `;
 
 export interface CommandHandler {
   (options: cli.DocOptions): Promise<true | void>;
 }
 
-export async function inspectHandler(
+export function isDryRun(options: cli.DocOptions): boolean {
+  const { "--dry-run": dryRun } = options;
+  return dryRun ? true : false;
+}
+
+export function isVerbose(options: cli.DocOptions): boolean {
+  const { "--verbose": verbose } = options;
+  return verbose ? true : false;
+}
+
+export function acquireProjectPath(options: cli.DocOptions): ProjectPath {
+  const { "<project-home>": projectHomePath } = options;
+  return mod.enrichProjectPath(
+    { absProjectPath: projectHomePath ? projectHomePath.toString() : "." },
+  );
+}
+
+export async function runShellCommand(
+  cmd: string,
+  pp: mod.ProjectPath,
+  options: cli.DocOptions,
+): Promise<void> {
+  await mod.runShellCommand(
+    { dryRun: false }, // dry-run is supported by udd directly
+    {
+      cwd: pp.absProjectPath,
+      cmd: mod.commandComponents(cmd),
+    },
+    mod.shellCmdStdOutHandler,
+    mod.shellCmdStdErrHandler,
+  );
+}
+
+export async function inspectProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
-  const {
-    inspect,
-    "<project-home>": projectHomePath,
-  } = options;
+  const { inspect } = options;
   if (inspect) {
-    const pp = mod.enrichProjectPath(
-      { absProjectPath: projectHomePath ? projectHomePath.toString() : "." },
-    );
+    const pp = acquireProjectPath(options);
     if (!pp.absProjectPathExists) {
       console.error(`Path ${pp.absProjectPath} does not exist.`);
       return true;
@@ -48,25 +79,65 @@ export async function inspectHandler(
   }
 }
 
-export async function setupOrUpgradeHandler(
+export async function projectVersionHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
-  const {
-    setup,
-    upgrade,
-    deno,
-    "<project-home>": projectHomePath,
-    "--tag": tag,
-    "--dry-run": dryRun,
-    "--verbose": verbose,
-  } = options;
-  if ((setup || upgrade) && deno) {
-    mod.copyVsCodeSettingsFromGitHub("deno", {
-      srcRepoTag: tag ? tag.toString() : undefined,
-      projectHomePath: projectHomePath ? projectHomePath.toString() : undefined,
-      dryRun: dryRun ? true : false,
-      verbose: verbose ? true : false,
-    });
+  const { version } = options;
+  if (version) {
+    const pp = acquireProjectPath(options);
+    if (mod.isGitWorkTree(pp)) {
+      await runShellCommand("git-semtag getfinal", pp, options);
+    } else {
+      console.error(`${pp.absProjectPath} is not a Git Work Tree`);
+    }
+    return true;
+  }
+}
+
+export async function publishProjectHandler(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const { publish, "--semtag": version } = options;
+  if (publish) {
+    const pp = acquireProjectPath(options);
+    if (mod.isGitWorkTree(pp)) {
+      await runShellCommand(
+        `git-semtag final${version ? (" -v " + version) : ""}${
+          isDryRun(options) ? " -o" : ""
+        }`,
+        pp,
+        options,
+      );
+    } else {
+      console.error(`${pp.absProjectPath} is not a Git Work Tree`);
+    }
+    return true;
+  }
+}
+
+export async function denoSetupOrUpgradeHandler(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const { deno, setup, upgrade, "--tag": tag } = options;
+  if (deno && (setup || upgrade)) {
+    const startPP = acquireProjectPath(options);
+    if (startPP.absProjectPathExists) {
+      mod.copyVsCodeSettingsFromGitHub("deno", {
+        srcRepoTag: tag ? tag.toString() : undefined,
+        projectHomePath: startPP.absProjectPath,
+        dryRun: isDryRun(options),
+        verbose: isVerbose(options),
+      });
+      const upgraded = acquireProjectPath(options);
+      if (isVerbose(options)) console.dir(upgraded);
+      if (!mod.isDenoProject(upgraded)) {
+        console.error(
+          "ERROR: Copied VS Code settings but Deno detection failed.",
+        );
+      }
+    } else {
+      console.error(`${startPP.absProjectPath} does not exist.`);
+    }
     return true;
   }
 }
@@ -74,18 +145,13 @@ export async function setupOrUpgradeHandler(
 export async function denoUpdateHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
-  const {
-    deno,
-    update,
-    "--dry-run": dryRun,
-  } = options;
+  const { deno, update } = options;
   if (deno && update) {
-    const pp = mod.prepareProjectPath({ absProjectPath: "." });
-    if (!pp.absProjectPathExists) {
-      console.error(`Path ${pp.absProjectPath} does not exist.`);
+    const dp = acquireProjectPath(options);
+    if (!dp.absProjectPathExists) {
+      console.error(`Path ${dp.absProjectPath} does not exist.`);
       return true;
     }
-    const dp = mod.enrichDenoProjectByVsCodePlugin(pp, pp);
     if (mod.isDenoProject(dp)) {
       const checkFiles: string[] = [];
       for (const candidate of dp.updateDepsCandidates()) {
@@ -93,28 +159,21 @@ export async function denoUpdateHandler(
           checkFiles.push(candidate.relativeTo(dp.absProjectPath));
         }
       }
-      const cmd = `udd${dryRun ? " --dry-run" : ""} ${checkFiles.join(" ")}`;
-      mod.runShellCommand(
-        { dryRun: false }, // dry-run is supported by udd directly
-        {
-          cmd: mod.commandComponents(cmd),
-        },
-        mod.shellCmdStdOutHandler,
-        mod.shellCmdStdErrHandler,
-      );
+      const cmd = `udd${isDryRun(options) ? " --dry-run" : ""} ${
+        checkFiles.join(" ")
+      }`;
+      await runShellCommand(cmd, dp, options);
     } else {
-      console.error(`Not a Deno project: ${pp.absProjectPath}`);
+      console.error(`Not a Deno project: ${dp.absProjectPath}`);
     }
     return true;
   }
 }
 
-export async function versionHandler(
+export async function ctlVersionHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
-  const {
-    "--version": version,
-  } = options;
+  const { "--version": version } = options;
   if (version) {
     console.log($VERSION);
     return true;
@@ -122,11 +181,14 @@ export async function versionHandler(
 }
 
 if (import.meta.main) {
+  // put the shorter commands near the end of the list
   const handlers: CommandHandler[] = [
-    inspectHandler,
-    setupOrUpgradeHandler,
+    inspectProjectHandler,
+    denoSetupOrUpgradeHandler,
     denoUpdateHandler,
-    versionHandler,
+    publishProjectHandler,
+    projectVersionHandler,
+    ctlVersionHandler,
   ];
   try {
     const options = cli.default(docoptSpec);

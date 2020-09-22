@@ -63,6 +63,13 @@ export function prepareProjectPath(
   };
 }
 
+const defaultEnrichers: ProjectPathEnricher[] = [
+  enrichGitWorkTree,
+  enrichDenoProjectByVsCodePlugin,
+  enrichNpmProject,
+  enrichTypeScriptProject,
+];
+
 /**
  * Take a ProjectPath and enrich it with polyglot detection.
  * @param ctx the enrichment context
@@ -71,13 +78,12 @@ export function prepareProjectPath(
 export function enrichProjectPath(
   ctx: { absProjectPath: FsPathAndFileName },
   pp: ProjectPath = prepareProjectPath(ctx),
+  enrichers?: (suggested: ProjectPathEnricher[]) => ProjectPathEnricher[],
 ): ProjectPath {
-  const transformers: ProjectPathEnricher[] = [
-    enrichGitWorkTree,
-    enrichDenoProjectByVsCodePlugin,
-    enrichNpmProject,
-    enrichTypeScriptProject,
-  ];
+  const transformers = enrichers
+    ? enrichers(defaultEnrichers)
+    : defaultEnrichers;
+
   let result = pp;
   for (const tr of transformers) {
     result = tr(ctx, result);
