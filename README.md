@@ -7,11 +7,15 @@ project types.
 ## Deno
 
 This library requires Deno. The following instructions assume Deno is installed.
-You should setup the following aliases:
+You should the following to your shell:
 
 ```bash
-alias projectctl="deno run -A --unstable 'https://denopkg.com/shah/vscode-team/projectctl.ts'"
-alias wsctl="deno run -A --unstable 'https://denopkg.com/shah/vscode-team/wsctl.ts'"
+# Get the latest version of the module(s)
+export VSCODE_TEAM_VERSION=`curl -s https://api.github.com/repos/shah/vscode-team/tags  | jq '.[0].name' -r`
+
+# Setup aliases tied to the latest version
+alias projectctl="deno run -A --unstable 'https://denopkg.com/shah/vscode-team@${VSCODE_TEAM_VERSION}/projectctl.ts'"
+alias wsctl="deno run -A --unstable 'https://denopkg.com/shah/vscode-team@${VSCODE_TEAM_VERSION}/wsctl.ts'"
 ```
 
 # Projects Controller `projectctl.ts`
