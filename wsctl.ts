@@ -3,7 +3,7 @@ import docopt, {
 } from "https://denopkg.com/Eyal-Shalev/docopt.js@v1.0.1/src/docopt.ts";
 import * as mod from "./mod.ts";
 
-const $VERSION = "v0.8.2";
+const $VERSION = "v0.8.3";
 const docoptSpec = `
 Visual Studio Team Workspaces Controller ${$VERSION}.
 

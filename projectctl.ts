@@ -4,7 +4,7 @@ import * as mod from "./mod.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.8.2";
+const $VERSION = "v0.8.3";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
@@ -123,7 +123,7 @@ export async function denoSetupOrUpgradeProjectHandler(
   if (deno && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
     if (startPP.absProjectPathExists) {
-      mod.copyVsCodeSettingsFromGitHub("deno", {
+      await mod.copyVsCodeSettingsFromGitHub("deno", {
         srcRepoTag: tag ? tag.toString() : undefined,
         projectHomePath: startPP.absProjectPath,
         dryRun: isDryRun(options),

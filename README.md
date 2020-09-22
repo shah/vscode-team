@@ -147,6 +147,20 @@ cd $SANDBOX_WORKSP_HOME
 wsctl vscws npm update periodicals.node.code-workspace --node-home=/home/snshah/.nvm/versions/node/v14.5.0
 ```
 
+# Contributing
+
+At the momemt there are no unit tests so starting there would be great. If you make any code modifications and want to publish a new version:
+
+* Run `projectctl version --next`
+* Go into `projectctl.ts` and update the $VERSION variable (TODO: needs to be automated)
+* Go into `wsctl.ts` and update the $VERSION variable (TODO: needs to be automated)
+
+Run publish:
+
+```bash
+projectl deno publish
+```
+
 # TODO and Roadmap
 
 * Use [github.com/tsconfig/bases](https://github.com/tsconfig/bases) as good example for how to create `tsconfig.json` versions in stdlib.
