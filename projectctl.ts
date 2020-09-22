@@ -1,10 +1,9 @@
-import type { ProjectPath } from "./code-artifacts.ts";
 import { docopt as cli } from "./deps.ts";
 import * as mod from "./mod.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.8.3";
+const $VERSION = "v0.9.0";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
@@ -41,7 +40,7 @@ export function isVerbose(options: cli.DocOptions): boolean {
   return verbose ? true : false;
 }
 
-export function acquireProjectPath(options: cli.DocOptions): ProjectPath {
+export function acquireProjectPath(options: cli.DocOptions): mod.ProjectPath {
   const { "<project-home>": projectHomePath } = options;
   return mod.enrichProjectPath(
     { absProjectPath: projectHomePath ? projectHomePath.toString() : "." },

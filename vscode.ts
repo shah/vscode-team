@@ -1,16 +1,16 @@
-import * as ca from "./code-artifacts.ts";
+import * as prj from "./project.ts";
 import { fs, path } from "./deps.ts";
 import * as shell from "./shell.ts";
 
-export type VsCodeWorkspaceFsPFN = ca.FsPathAndFileName;
+export type VsCodeWorkspaceFsPFN = prj.FsPathAndFileName;
 
 export interface VsCodeWorkspaceFolder {
-  readonly path: ca.FsPathOnly;
+  readonly path: prj.FsPathOnly;
 }
 
 export interface VsCodeWorkspaceFolderEnricher {
   (
-    wsFileName: ca.FsPathAndFileName,
+    wsFileName: prj.FsPathAndFileName,
     folder: VsCodeWorkspaceFolder,
   ): VsCodeWorkspaceFolder;
 }
@@ -23,8 +23,8 @@ export interface VsCodeWorkspaceFolderEnricher {
 export function enrichProjectFolder(
   wsFileName: string,
   folder: VsCodeWorkspaceFolder,
-): VsCodeWorkspaceFolder & ca.ProjectPath {
-  if (ca.isProjectPath(folder)) return folder;
+): VsCodeWorkspaceFolder & prj.ProjectPath {
+  if (prj.isProjectPath(folder)) return folder;
   const projectPath = path.join(
     path.dirname(
       path.isAbsolute(wsFileName)
@@ -33,8 +33,8 @@ export function enrichProjectFolder(
     ),
     folder.path,
   );
-  const pp = ca.enrichProjectPath({ absProjectPath: projectPath });
-  const result: VsCodeWorkspaceFolder & ca.ProjectPath = {
+  const pp = prj.enrichProjectPath({ absProjectPath: projectPath });
+  const result: VsCodeWorkspaceFolder & prj.ProjectPath = {
     ...folder,
     ...pp,
   };
@@ -53,15 +53,15 @@ export function enrichDenoProjectFolder(
   f: VsCodeWorkspaceFolder,
 ):
   | VsCodeWorkspaceFolder
-  | VsCodeWorkspaceFolder & ca.DenoProjectByVsCodePlugin
-  | VsCodeWorkspaceFolder & ca.DenoProjectByConvention {
+  | VsCodeWorkspaceFolder & prj.DenoProjectByVsCodePlugin
+  | VsCodeWorkspaceFolder & prj.DenoProjectByConvention {
   const folder = enrichProjectFolder(wsFileName, f);
-  const pp = ca.enrichDenoProjectByVsCodePlugin(
+  const pp = prj.enrichDenoProjectByVsCodePlugin(
     folder,
     folder,
   );
-  if (ca.isDenoProject(pp)) {
-    const result: VsCodeWorkspaceFolder & ca.DenoProjectByVsCodePlugin = {
+  if (prj.isDenoProject(pp)) {
+    const result: VsCodeWorkspaceFolder & prj.DenoProjectByVsCodePlugin = {
       ...folder,
       ...pp,
     };
@@ -70,9 +70,9 @@ export function enrichDenoProjectFolder(
 
   const denoWsFileNamePattern = /\.deno\.code-workspace$/;
   if (denoWsFileNamePattern.test(wsFileName)) {
-    const result: VsCodeWorkspaceFolder & ca.DenoProjectByConvention = {
+    const result: VsCodeWorkspaceFolder & prj.DenoProjectByConvention = {
       ...folder,
-      ...ca.forceDenoProject(folder),
+      ...prj.forceDenoProject(folder),
       isDenoProjectByConvention: true,
     };
     return result;
@@ -86,7 +86,7 @@ export function enrichDenoProjectFolder(
  * @param folder The folder we want to detect and enrich
  */
 export function enrichVsCodeWorkspaceFolderTypes(
-  wsFileName: ca.FsPathAndFileName,
+  wsFileName: prj.FsPathAndFileName,
   folder: VsCodeWorkspaceFolder,
 ): VsCodeWorkspaceFolder {
   const transformers: VsCodeWorkspaceFolderEnricher[] = [
@@ -104,7 +104,7 @@ export interface VsCodeWorkspace {
 }
 
 export interface VsCodeWorkspaceFolderContext {
-  readonly wsFileName: ca.FsPathAndFileName;
+  readonly wsFileName: prj.FsPathAndFileName;
   readonly workspace: VsCodeWorkspace;
   readonly folder: VsCodeWorkspaceFolder;
 }
@@ -205,10 +205,10 @@ export function vsCodeWorkspaceFolders(
 //     └── gmail-classify-anchors
 
 export interface GitReposContext {
-  readonly reposHomePath: ca.FsPathOnly;
+  readonly reposHomePath: prj.FsPathOnly;
   readonly reposHomePathDoesNotExistHandler?: (
     ctx: GitReposContext,
-  ) => ca.RecoverableErrorHandlerResult;
+  ) => prj.RecoverableErrorHandlerResult;
 }
 
 export function isValidGitReposContext(
@@ -237,7 +237,7 @@ export function isValidGitReposContext(
 
 export async function setupWorkspaces(
   ctx:
-    & { workspacesMasterRepo: ca.FsPathOnly }
+    & { workspacesMasterRepo: prj.FsPathOnly }
     & GitReposContext
     & {
       readonly dryRun: boolean;
@@ -345,7 +345,7 @@ export async function gitCloneVsCodeFolders(
 
 export async function workspaceFoldersGitCommandHandler(
   dryRun: boolean,
-  wsFileName: ca.FsPathOnly[] | ca.FsPathOnly,
+  wsFileName: prj.FsPathOnly[] | prj.FsPathOnly,
   gitCmd: string,
   reporter?: (
     ctx: VsCodeWorkspaceFolderContext,
@@ -357,7 +357,7 @@ export async function workspaceFoldersGitCommandHandler(
       ? wsFileName
       : [wsFileName.toString()],
   }).forEach((ctx) => {
-    if (ca.isGitWorkTree(ctx.folder)) {
+    if (prj.isGitWorkTree(ctx.folder)) {
       cmdRuns.push(shell.runShellCommand(
         { dryRun: dryRun },
         `git --git-dir=${ctx.folder.gitDir} --work-tree=${ctx.folder.gitWorkTree} ${gitCmd}`,
@@ -373,8 +373,8 @@ export async function workspaceFoldersGitCommandHandler(
 
 export interface NpmCommandHandlerOptions {
   readonly dryRun: boolean;
-  readonly wsFileName: ca.FsPathOnly[] | ca.FsPathOnly;
-  readonly nodeHomePath: ca.FsPathAndFileName;
+  readonly wsFileName: prj.FsPathOnly[] | prj.FsPathOnly;
+  readonly nodeHomePath: prj.FsPathAndFileName;
   readonly npmCmdParams: string;
   readonly reporter?: (
     ctx: VsCodeWorkspaceFolderContext,
@@ -401,7 +401,7 @@ export async function workspaceFoldersNpmCommandHandler(
       ? wsFileName
       : [wsFileName.toString()],
   }).forEach((ctx) => {
-    if (ca.isNpmProject(ctx.folder)) {
+    if (prj.isNpmProject(ctx.folder)) {
       if (filter && !filter(ctx)) return;
       cmdRuns.push(shell.runShellCommand(
         { dryRun: dryRun },
@@ -424,8 +424,8 @@ export async function workspaceFoldersNpmCommandHandler(
 
 export interface DenoProjectHandlerOptions {
   readonly dryRun: boolean;
-  readonly wsFileName: ca.FsPathOnly[] | ca.FsPathOnly;
-  readonly command: (dp: ca.DenoProject) => string;
+  readonly wsFileName: prj.FsPathOnly[] | prj.FsPathOnly;
+  readonly command: (dp: prj.DenoProject) => string;
   readonly reporter?: (
     ctx: VsCodeWorkspaceFolderContext,
   ) => shell.ShellCmdStatusReporter;
@@ -441,7 +441,7 @@ export async function workspaceFoldersDenoProjectHandler(
       ? wsFileName
       : [wsFileName.toString()],
   }).forEach((ctx) => {
-    if (ca.isDenoProject(ctx.folder)) {
+    if (prj.isDenoProject(ctx.folder)) {
       if (filter && !filter(ctx)) return;
       cmdRuns.push(shell.runShellCommand(
         { dryRun: dryRun },
@@ -463,7 +463,7 @@ export async function copyVsCodeSettingsFromGitHub(
   projectType: "deno",
   options?: {
     readonly srcRepoTag?: string;
-    readonly projectHomePath?: ca.FsPathOnly;
+    readonly projectHomePath?: prj.FsPathOnly;
     readonly dryRun?: boolean;
     readonly verbose?: boolean;
   },
@@ -471,7 +471,7 @@ export async function copyVsCodeSettingsFromGitHub(
   const runningInVsCodeTeamRepo = path.basename(Deno.cwd()) == "vscode-team";
   const vsCodeSettingsHome = ".vscode";
   const version = options?.srcRepoTag || "master";
-  await ca.copySourceToDest(
+  await prj.copySourceToDest(
     [
       `https://raw.githubusercontent.com/shah/vscode-team/${version}/${projectType}.vscode/settings.json`,
       `https://raw.githubusercontent.com/shah/vscode-team/${version}/${projectType}.vscode/extensions.json`,
