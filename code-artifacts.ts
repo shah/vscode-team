@@ -328,6 +328,12 @@ export function enrichDenoProjectByVsCodePlugin(
 // TODO: this is incomplete, needs implementation - it's designed to convert
 //       a Deno project from a polyrepo into a monorepo by making all imports
 //       local instead of remote.
+//       # To make the libraries "local" monorepo
+//       "https://denopkg.com/gov-suite/(.*?)(@.*?)/(.*?)/mod.ts"
+//       ../../../$1/$3/mod.ts
+//       # To make the libraries back to polyrepos
+//       "https://denopkg.com/gov-suite/$1/mod.ts"
+
 export async function denoRewriteImportsAsMonoRepo(
   ctx: { projectHome: string },
   depsGlob = "**/*/deps{-test,}.ts",
