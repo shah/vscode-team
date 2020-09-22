@@ -4,18 +4,18 @@ import * as mod from "./mod.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.7.2";
+const $VERSION = "v0.8.0";
 const docoptSpec = `
 Visual Studio Team Projects Controller.
 
 Usage:
-  teamctl inspect [<project-home>]
-  teamctl version [<project-home>]
-  teamctl publish [<project-home>] [--semtag=<version>] [--dry-run]
-  teamctl deno (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
-  teamctl deno update [<project-home>] [--dry-run]
-  teamctl -h | --help
-  teamctl --version
+  projectctl inspect [<project-home>]
+  projectctl version [<project-home>]
+  projectctl publish [<project-home>] [--semtag=<version>] [--dry-run]
+  projectctl deno (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  projectctl deno update [<project-home>] [--dry-run]
+  projectctl -h | --help
+  projectctl --version
 
 Options:
   -h --help            Show this screen

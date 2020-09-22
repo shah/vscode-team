@@ -4,44 +4,149 @@ This repo contains common Visual Studio Code and similar IDE reusable artifacts
 to automatically setup sandbox engineering environments for a variety of
 project types.
 
-## Deno and `teamctl.ts`
+## Deno
 
-The main control utility is called `teamctl.ts` and depends on Deno. The following 
-instructions assume Deno is installed and an alias `deno-run` which resolves to
-`deno run -A --unstable` has been setup.
-
-First, let's check out what the `teamctl.ts` script can do:
+This library requires Deno. The following instructions assume Deno is installed.
+You should setup the following aliases:
 
 ```bash
-❯ deno-run teamctl.ts --help
+alias projectctl="deno run -A --unstable 'https://denopkg.com/shah/vscode-team/projectctl.ts'"
+alias wsctl="deno run -A --unstable 'https://denopkg.com/shah/vscode-team/wsctl.ts'"
+```
+
+# Projects Controller `projectctl.ts`
+
+Let's check out what the `projectctl.ts` script can do:
+
+```bash
+❯ projectctl --help
 Visual Studio Team Projects Controller.
 
 Usage:
-  teamctl.ts setup deno [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
-  teamctl.ts upgrade deno [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
-  teamctl.ts -h | --help
-  teamctl.ts --version
+  projectctl inspect [<project-home>]
+  projectctl version [<project-home>]
+  projectctl publish [<project-home>] [--semtag=<version>] [--dry-run]
+  projectctl deno (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  projectctl deno update [<project-home>] [--dry-run]
+  projectctl -h | --help
+  projectctl --version
 
 Options:
-  -h --help         Show this screen
-  --version         Show version
-  <project-home>    The root of the project folder (usually ".")
-  --tag=<tag>       A specific version of the settings to use (default: "master")
-  --dry-run         Show what will happen instead of executing
-  --verbose         Be descriptive about what's going on
+  -h --help            Show this screen
+  --version            Show version
+  <project-home>       The root of the project folder (defaults to ".")
+  --tag=<tag>          A specific version of the settings to use (default: "master")
+  --semtag=<version>   A specific semantic version to apply as a tag
+  --dry-run            Show what will happen instead of executing
+  --verbose            Be descriptive about what's going on
 ```
 
-# Running in any VS Code project
+## Running in any project directories:
 
 This will run the latest version directly from GitHub and setup your Deno project
 with `.vscode` (`settings.json` and `extensions.json`):
 
 ```bash
-deno-run "https://denopkg.com/shah/vscode-team/teamctl.ts" setup deno
+projectctl deno setup
 ```
 
 Later, to upgrade:
 
 ```bash
-deno-run "https://denopkg.com/shah/vscode-team/teamctl.ts" upgrade deno
+projectctl upgrade
 ```
+
+To publish the project (tag it and push it to GitHub, for example):
+
+```bash
+projectctl deno publish
+```
+
+# Workspaces Controller `wsctl.ts`
+
+Let's check out what the `wsctl.ts` script can do:
+
+```bash
+❯ deno-run wsctl.ts --help
+Check file:///home/snshah/workspaces/github.com/shah/vscode-team/wsctl.ts
+Visual Studio Team Workspaces Controller.
+
+Usage:
+  wsctl setup <workspaces-home-path> <repos-home-path> [--create-repos-path] [--dry-run] [--verbose]
+  wsctl vscws inspect folders <file.code-workspace>
+  wsctl vscws settings sync (deno|auto) <file.code-workspace> [--tag=<tag>] [--dry-run] [--verbose]
+  wsctl vscws git clone <file.code-workspace> <repos-home-path> [--create-repos-path] [--dry-run] [--verbose]
+  wsctl vscws git pull <file.code-workspace> [--dry-run]
+  wsctl vscws git status <file.code-workspace> [--dry-run]
+  wsctl vscws git commit <message> <file.code-workspace> [--dry-run]
+  wsctl vscws git add-commit <message> <file.code-workspace> [--dry-run]
+  wsctl vscws git add-commit-push <message> <file.code-workspace> [--dry-run]
+  wsctl vscws npm install <file.code-workspace> [--node-home=<path>] [--dry-run]
+  wsctl vscws npm publish <file.code-workspace> [--node-home=<path>] [--dry-run]
+  wsctl vscws npm update <file.code-workspace> [--node-home=<path>] [--dry-run]
+  wsctl vscws npm test <file.code-workspace> [--node-home=<path>] [--dry-run]
+  wsctl vscws npm version bump (major|minor|patch) <file.code-workspace> [--no-git-tag-version] [--node-home=<path>] [--dry-run]
+  wsctl vscws deno lint <file.code-workspace> [--dry-run]
+  wsctl vscws deno fmt <file.code-workspace> [--dry-run]
+  wsctl vscws deno test <file.code-workspace> [--dry-run]
+  wsctl vscws deno update <file.code-workspace> [--dry-run]
+  wsctl -h | --help
+  wsctl --version
+
+Options:
+  -h --help                 Show this screen
+  --version                 Show version  
+  <file.code-workspace>     Visual Studio Code workspace file
+  <repos-home-path>         Usually $HOME/workspaces
+  --node-home=<path>        NodeJS home path (e.g. $HOME/.nvm/versions/node/v14.5.0)
+  --tag=<tag>               A specific version of a repo to use (default: "master")
+  --dry-run                 Show what will happen instead of executing
+  --verbose                 Be descriptive about what's going on
+```
+
+# Working with Visual Studio Workspaces
+
+To see what the `wscts.ts` command knows about a Visual Studio Code workspace, give it a `*.code-workspace` file:
+
+```bash
+cd $SANDBOX_WORKSP_HOME
+wsctl vscws inspect folders gov-suite.deno.code-workspace
+```
+
+To see how `wsctl.ts` would clone folders in, say, the `gov-suite.deno.code-workspace` workspace use the following command with `--dry-run`:
+
+```bash
+cd $SANDBOX_WORKSP_HOME
+wsctl vscws git clone gov-suite.deno.code-workspace $HOME/workspaces --dry-run --verbose
+```
+
+Now remove `--dry-run` to clone all folders:
+
+```bash
+cd $SANDBOX_WORKSP_HOME
+wsctl vscws git clone gov-suite.deno.code-workspace $HOME/workspaces --verbose
+```
+
+# Regular usage
+
+To automatically check `git status` in each workspace folder:
+
+```bash
+cd $SANDBOX_WORKSP_HOME
+wsctl vscws git status gov-suite.deno.code-workspace
+```
+
+To run `npm update` in each workspace folder:
+
+```bash
+cd $SANDBOX_WORKSP_HOME
+wsctl vscws npm update periodicals.node.code-workspace --node-home=/home/snshah/.nvm/versions/node/v14.5.0
+```
+
+# TODO and Roadmap
+
+* Use [github.com/tsconfig/bases](https://github.com/tsconfig/bases) as good example for how to create `tsconfig.json` versions in stdlib.
+* Define standard approach to using [python-shell](https://github.com/extrabacon/python-shell) to integrate Pyton scripts in from NodeJS. Consider adapting it to Deno too, see [how-to-run-a-python-script-from-deno](https://stackoverflow.com/questions/61710787/how-to-run-a-python-script-from-deno).
+* Add support for [Executable Books](https://executablebooks.org) project
+* Should libraries like this be managed in workspaces, Pip, or somewhere else:
+  * [PyHealth](https://github.com/yzhao062/PyHealth)
