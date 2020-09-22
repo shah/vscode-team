@@ -3,9 +3,9 @@ import docopt, {
 } from "https://denopkg.com/Eyal-Shalev/docopt.js@v1.0.1/src/docopt.ts";
 import * as mod from "./mod.ts";
 
-const $VERSION = "v0.8.0";
+const $VERSION = "v0.8.1";
 const docoptSpec = `
-Visual Studio Team Workspaces Controller.
+Visual Studio Team Workspaces Controller ${$VERSION}.
 
 Usage:
   wsctl setup <workspaces-home-path> <repos-home-path> [--create-repos-path] [--dry-run] [--verbose]
