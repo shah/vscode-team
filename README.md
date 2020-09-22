@@ -163,6 +163,8 @@ projectl deno publish
 
 # TODO and Roadmap
 
+* The `projectctl.ts` file is newer than `wsctl.ts` and has updated functionality at the project level that needs to be carried over to the workspace processors level. 
+
 * Use [github.com/tsconfig/bases](https://github.com/tsconfig/bases) as good example for how to create `tsconfig.json` versions in stdlib.
 * Define standard approach to using [python-shell](https://github.com/extrabacon/python-shell) to integrate Pyton scripts in from NodeJS. Consider adapting it to Deno too, see [how-to-run-a-python-script-from-deno](https://stackoverflow.com/questions/61710787/how-to-run-a-python-script-from-deno).
 * Add support for [Executable Books](https://executablebooks.org) project
