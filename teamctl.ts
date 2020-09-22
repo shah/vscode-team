@@ -3,13 +3,14 @@ import * as mod from "./mod.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.5.7";
+const $VERSION = "v0.6.0";
 const docoptSpec = `
 Visual Studio Team Projects Controller.
 
 Usage:
   teamctl.ts setup deno [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   teamctl.ts upgrade deno [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  teamctl.ts deno update [--dry-run]
   teamctl.ts -h | --help
   teamctl.ts --version
 
@@ -45,6 +46,44 @@ export async function setupOrUpgradeHandler(
       dryRun: dryRun ? true : false,
       verbose: verbose ? true : false,
     });
+    return true;
+  }
+}
+
+export async function denoUpdateHandler(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const {
+    deno,
+    update,
+    "--dry-run": dryRun,
+  } = options;
+  if (deno && update) {
+    const pp = mod.prepareProjectPath({ absProjectPath: "." });
+    if (!pp.absProjectPathExists) {
+      console.error(`Path ${pp.absProjectPath} does not exist.`);
+      return true;
+    }
+    const dp = mod.enrichDenoProjectByVsCodePlugin(pp, pp);
+    if (mod.isDenoProject(dp)) {
+      const checkFiles: string[] = [];
+      for (const candidate of dp.updateDepsCandidates()) {
+        if (candidate.fileExists) {
+          checkFiles.push(candidate.relativeTo(dp.absProjectPath));
+        }
+      }
+      const cmd = `udd${dryRun ? " --dry-run" : ""} ${checkFiles.join(" ")}`;
+      mod.runShellCommand(
+        { dryRun: false }, // dry-run is supported by udd directly
+        {
+          cmd: mod.commandComponents(cmd),
+        },
+        mod.shellCmdStdOutHandler,
+        mod.shellCmdStdErrHandler,
+      );
+    } else {
+      console.error(`Not a Deno project: ${pp.absProjectPath}`);
+    }
     return true;
   }
 }

@@ -1,5 +1,5 @@
-import { fs, path } from "./deps.ts";
 import * as ca from "./code-artifacts.ts";
+import { fs, path } from "./deps.ts";
 import * as shell from "./shell.ts";
 
 export type VsCodeWorkspaceFsPFN = ca.FsPathAndFileName;
@@ -20,7 +20,7 @@ export interface VsCodeWorkspaceFolderEnricher {
  * @param wsFileName a VS Code x.code-workspace file
  * @param folder The folder we want to enrich as a project
  */
-export function enrichProjectPath(
+export function enrichProjectFolder(
   wsFileName: string,
   folder: VsCodeWorkspaceFolder,
 ): VsCodeWorkspaceFolder & ca.ProjectPath {
@@ -33,131 +33,51 @@ export function enrichProjectPath(
     ),
     folder.path,
   );
-  return {
+  const pp = ca.enrichProjectPath({ absProjectPath: projectPath });
+  const result: VsCodeWorkspaceFolder & ca.ProjectPath = {
     ...folder,
-    isProjectPath: true,
-    projectPathRelToWorkspaceFile: path.join(
-      path.dirname(wsFileName),
-      folder.path,
-    ),
-    absProjectPath: projectPath,
-  };
-}
-
-/**
- * Take a Visual Studio Code folder and enrich it as a Git work tree.
- * @param wsFileName a VS Code x.code-workspace file
- * @param folder The folder we want to enrich as a Git work tree
- */
-export function enrichGitWorkTree(
-  wsFileName: string,
-  f: VsCodeWorkspaceFolder,
-): VsCodeWorkspaceFolder | VsCodeWorkspaceFolder & ca.GitWorkTree {
-  const folder = enrichProjectPath(wsFileName, f);
-  const workingTreePath = folder.absProjectPath;
-  const gitTreePath = path.join(workingTreePath, ".git");
-  if (fs.existsSync(gitTreePath)) {
-    const result: VsCodeWorkspaceFolder & ca.GitWorkTree = {
-      ...folder,
-      isGitWorkTree: true,
-      gitDir: gitTreePath,
-      gitWorkTree: workingTreePath,
-    };
-    return result;
-  }
-  return folder;
-}
-
-/**
- * Take a Visual Studio Code folder and enrich it as a Deno project
- * if it matches our naming convention (abc.deno.code-workspace).
- * @param wsFileName a VS Code x.code-workspace file
- * @param folder The folder we want to enrich as a Deno project
- */
-export function enrichDenoProjectByWsFileNameConvention(
-  wsFileName: string,
-  f: VsCodeWorkspaceFolder,
-): VsCodeWorkspaceFolder | VsCodeWorkspaceFolder & ca.DenoProjectByConvention {
-  const folder = enrichProjectPath(wsFileName, f);
-  const denoWsFileNamePattern = /\.deno\.code-workspace$/;
-  if (!denoWsFileNamePattern.test(wsFileName)) return folder;
-
-  const projectPath = folder.absProjectPath;
-  const tsConfigFileName = path.join(projectPath, "tsconfig.json");
-  const result: VsCodeWorkspaceFolder & ca.DenoProjectByConvention = {
-    ...folder,
-    isTypeScriptProject: true,
-    tsConfigFileName: fs.existsSync(tsConfigFileName)
-      ? tsConfigFileName
-      : undefined,
-    isDenoProject: true,
-    isDenoProjectByConvention: true,
-    updateDepsCandidates: (): ca.PolyglotFile[] => {
-      return [
-        ...ca.guessPolyglotFiles(path.join(projectPath, "**", "mod.ts")),
-        ...ca.guessPolyglotFiles(path.join(projectPath, "**", "deps.ts")),
-        ...ca.guessPolyglotFiles(path.join(projectPath, "**", "deps-test.ts")),
-      ];
-    },
+    ...pp,
   };
   return result;
 }
 
 /**
- * Take a Visual Studio Code folder and enrich it as a NodeJS NPM project
- * if it has a package.json file at its root location.
+ * Take a Visual Studio Code folder and enrich it as a Deno project if it has
+ * deno.enable in .vscode/settings.json or matches our naming convention 
+ * (abc.deno.code-workspace).
  * @param wsFileName a VS Code x.code-workspace file
- * @param folder The folder we want to enrich as a NodeJS NPM project
+ * @param folder The folder we want to enrich as a Deno project
  */
-export function enrichNpmProject(
+export function enrichDenoProjectFolder(
   wsFileName: string,
   f: VsCodeWorkspaceFolder,
 ):
   | VsCodeWorkspaceFolder
-  | VsCodeWorkspaceFolder & ca.NpmProject
-  | VsCodeWorkspaceFolder & ca.NpmPublishableProject {
-  const folder = enrichProjectPath(wsFileName, f);
-  const projectPath = folder.absProjectPath;
-  const npmPkgConfig = new ca.NpmPackageConfig(
-    path.join(projectPath, "package.json"),
+  | VsCodeWorkspaceFolder & ca.DenoProjectByVsCodePlugin
+  | VsCodeWorkspaceFolder & ca.DenoProjectByConvention {
+  const folder = enrichProjectFolder(wsFileName, f);
+  const pp = ca.enrichDenoProjectByVsCodePlugin(
+    folder,
+    folder,
   );
-  if (!npmPkgConfig.isValid) return folder;
-  let regular: VsCodeWorkspaceFolder & ca.NpmProject = {
-    ...folder,
-    isNpmProject: true,
-    npmPackageConfig: npmPkgConfig,
-  };
-  if (npmPkgConfig.isPublishable) {
-    const publishable: VsCodeWorkspaceFolder & ca.NpmPublishableProject = {
-      ...regular,
-      isNpmPublishableProject: true,
+  if (ca.isDenoProject(pp)) {
+    const result: VsCodeWorkspaceFolder & ca.DenoProjectByVsCodePlugin = {
+      ...folder,
+      ...pp,
     };
-    return publishable;
+    return result;
   }
-  return regular;
-}
 
-/**
- * Take a Visual Studio Code folder and enrich it as a TypeScript project
- * if it has a tsconfig.json file at its root location.
- * @param wsFileName a VS Code x.code-workspace file
- * @param folder The folder we want to enrich as a TypeScript project
- */
-export function enrichTypeScriptProject(
-  wsFileName: string,
-  f: VsCodeWorkspaceFolder,
-):
-  | VsCodeWorkspaceFolder
-  | VsCodeWorkspaceFolder & ca.TypeScriptProject {
-  const folder = enrichProjectPath(wsFileName, f);
-  const projectPath = folder.absProjectPath;
-  const tsConfigPath = path.join(projectPath, "tsconfig.json");
-  if (!fs.existsSync(tsConfigPath)) return folder;
-  return {
-    ...folder,
-    isTypeScriptProject: true,
-    tsConfigFileName: tsConfigPath,
-  };
+  const denoWsFileNamePattern = /\.deno\.code-workspace$/;
+  if (denoWsFileNamePattern.test(wsFileName)) {
+    const result: VsCodeWorkspaceFolder & ca.DenoProjectByConvention = {
+      ...folder,
+      ...ca.forceDenoProject(folder),
+      isDenoProjectByConvention: true,
+    };
+    return result;
+  }
+  return folder;
 }
 
 /**
@@ -170,12 +90,9 @@ export function enrichVsCodeWorkspaceFolderTypes(
   folder: VsCodeWorkspaceFolder,
 ): VsCodeWorkspaceFolder {
   const transformers: VsCodeWorkspaceFolderEnricher[] = [
-    enrichGitWorkTree,
-    enrichDenoProjectByWsFileNameConvention,
-    enrichNpmProject,
-    enrichTypeScriptProject,
+    enrichDenoProjectFolder,
   ];
-  let result: VsCodeWorkspaceFolder = enrichProjectPath(wsFileName, folder);
+  let result: VsCodeWorkspaceFolder = enrichProjectFolder(wsFileName, folder);
   for (const tr of transformers) {
     result = tr(wsFileName, result);
   }
@@ -287,16 +204,47 @@ export function vsCodeWorkspaceFolders(
 //   └── netspective-studios
 //     └── gmail-classify-anchors
 
+export interface GitReposContext {
+  readonly reposHomePath: ca.FsPathOnly;
+  readonly reposHomePathDoesNotExistHandler?: (
+    ctx: GitReposContext,
+  ) => ca.RecoverableErrorHandlerResult;
+}
+
+export function isValidGitReposContext(
+  ctx: GitReposContext & { readonly verbose: boolean },
+): boolean {
+  if (!fs.existsSync(ctx.reposHomePath)) {
+    if (ctx.reposHomePathDoesNotExistHandler) {
+      switch (ctx.reposHomePathDoesNotExistHandler(ctx)) {
+        case "recovered":
+          return true;
+        case "unrecoverrable":
+          // the function is responsible for error message
+          return false;
+      }
+    } else {
+      if (ctx.verbose) {
+        console.error(
+          `Repositories home path '${ctx.reposHomePath}' does not exist.`,
+        );
+      }
+      return false;
+    }
+  }
+  return true;
+}
+
 export async function setupWorkspaces(
   ctx:
     & { workspacesMasterRepo: ca.FsPathOnly }
-    & ca.GitReposContext
+    & GitReposContext
     & {
       readonly dryRun: boolean;
       readonly verbose: boolean;
     },
 ): Promise<void> {
-  if (!ca.isValidGitReposContext(ctx)) return;
+  if (!isValidGitReposContext(ctx)) return;
   if (ctx.verbose) {
     console.log(
       `Setting up ${ctx.workspacesMasterRepo} *.code-workspace files into ${ctx.reposHomePath}`,
@@ -342,17 +290,17 @@ export async function setupWorkspaces(
 export async function gitCloneVsCodeFolders(
   ctx:
     & VsCodeWorkspacesContext
-    & ca.GitReposContext
+    & GitReposContext
     & {
       readonly dryRun: boolean;
       readonly verbose: boolean;
     },
 ): Promise<void> {
-  if (!ca.isValidGitReposContext(ctx)) return;
+  if (!isValidGitReposContext(ctx)) return;
   const cloneRuns: Promise<void>[] = [];
   vsCodeWorkspaceFolders(ctx).forEach((vscwsFolderCtx) => {
     const cloneCtx = (vscwsFolderCtx as unknown) as (
-      & ca.GitReposContext
+      & GitReposContext
       & {
         readonly dryRun: boolean;
         readonly verbose: boolean;

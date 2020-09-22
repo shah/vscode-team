@@ -27,10 +27,14 @@ export function findInPath(
   return false;
 }
 
+export interface ProjectPathEnricher {
+  (ctx: { absProjectPath: FsPathAndFileName }, pp: ProjectPath): ProjectPath;
+}
+
 export interface ProjectPath {
   readonly isProjectPath: true;
-  readonly projectPathRelToWorkspaceFile: FsPathAndFileName;
   readonly absProjectPath: FsPathAndFileName;
+  readonly absProjectPathExists: boolean;
 }
 
 export function isProjectPath(o: unknown): o is ProjectPath {
@@ -41,6 +45,46 @@ export function vsCodeProjectSettingsPath(pp: ProjectPath): AbsoluteFsPath {
   return path.join(pp.absProjectPath, ".vscode");
 }
 
+/**
+ * Prepare a project path.
+ * @param ctx the enrichment context
+ * @returns the new ProjectPath
+ */
+export function prepareProjectPath(
+  ctx: { absProjectPath: FsPathAndFileName },
+): ProjectPath {
+  const absPath = path.isAbsolute(ctx.absProjectPath)
+    ? ctx.absProjectPath
+    : path.join(Deno.cwd(), ctx.absProjectPath);
+  return {
+    isProjectPath: true,
+    absProjectPath: absPath,
+    absProjectPathExists: fs.existsSync(absPath),
+  };
+}
+
+/**
+ * Take a ProjectPath and enrich it with polyglot detection.
+ * @param ctx the enrichment context
+ * @returns the enriched ProjectPath
+ */
+export function enrichProjectPath(
+  ctx: { absProjectPath: FsPathAndFileName },
+  pp: ProjectPath = prepareProjectPath(ctx),
+): ProjectPath {
+  const transformers: ProjectPathEnricher[] = [
+    enrichGitWorkTree,
+    enrichDenoProjectByVsCodePlugin,
+    enrichNpmProject,
+    enrichTypeScriptProject,
+  ];
+  let result = pp;
+  for (const tr of transformers) {
+    result = tr(ctx, result);
+  }
+  return result;
+}
+
 export interface GitWorkTree extends ProjectPath {
   readonly isGitWorkTree: true;
   readonly gitWorkTree: FsPathOnly;
@@ -49,6 +93,33 @@ export interface GitWorkTree extends ProjectPath {
 
 export function isGitWorkTree(o: unknown): o is GitWorkTree {
   return o && typeof o === "object" && "isGitWorkTree" in o;
+}
+
+/**
+ * Take a ProjectPath and enrich it as a Git work tree if appropriate.
+ * @param ctx the enrichment context
+ * @param pp The ProjectPath we want to enrich as a Git work tree
+ * @returns the enriched ProjectPath
+ */
+export function enrichGitWorkTree(
+  ctx: { absProjectPath: FsPathAndFileName },
+  pp: ProjectPath,
+): ProjectPath | GitWorkTree {
+  if (isGitWorkTree(pp)) return pp;
+  if (!pp.absProjectPathExists) return pp;
+
+  const workingTreePath = pp.absProjectPath;
+  const gitTreePath = path.join(workingTreePath, ".git");
+  if (fs.existsSync(gitTreePath)) {
+    const result: GitWorkTree = {
+      ...pp,
+      isGitWorkTree: true,
+      gitDir: gitTreePath,
+      gitWorkTree: workingTreePath,
+    };
+    return result;
+  }
+  return pp;
 }
 
 export interface PolyglotFile {
@@ -125,44 +196,38 @@ export function guessPolyglotFiles(glob: FileGlobPattern): PolyglotFile[] {
   return results;
 }
 
-export interface GitReposContext {
-  readonly reposHomePath: FsPathOnly;
-  readonly reposHomePathDoesNotExistHandler?: (
-    ctx: GitReposContext,
-  ) => RecoverableErrorHandlerResult;
-}
-
-export function isValidGitReposContext(
-  ctx: GitReposContext & { readonly verbose: boolean },
-): boolean {
-  if (!fs.existsSync(ctx.reposHomePath)) {
-    if (ctx.reposHomePathDoesNotExistHandler) {
-      switch (ctx.reposHomePathDoesNotExistHandler(ctx)) {
-        case "recovered":
-          return true;
-        case "unrecoverrable":
-          // the function is responsible for error message
-          return false;
-      }
-    } else {
-      if (ctx.verbose) {
-        console.error(
-          `Repositories home path '${ctx.reposHomePath}' does not exist.`,
-        );
-      }
-      return false;
-    }
-  }
-  return true;
-}
-
-export interface TypeScriptProject {
+export interface TypeScriptProject extends ProjectPath {
   readonly isTypeScriptProject: true;
   readonly tsConfigFileName?: FsPathAndFileName;
 }
 
 export function isTypeScriptProject(o: unknown): o is TypeScriptProject {
   return o && typeof o === "object" && "isTypeScriptProject" in o;
+}
+
+/**
+ * Take a ProjectPath and enrich it as a TypeScript project
+ * if it has a tsconfig.json file at its root location.
+ * @param ctx the enrichment context
+ * @param pp The ProjectPath we want to enrich as a Git work tree
+ * @returns the enriched ProjectPath
+ */
+export function enrichTypeScriptProject(
+  ctx: { absProjectPath: FsPathAndFileName },
+  pp: ProjectPath,
+): ProjectPath | TypeScriptProject {
+  if (isTypeScriptProject(pp)) return pp;
+  if (!pp.absProjectPathExists) return pp;
+
+  const projectPath = pp.absProjectPath;
+  const tsConfigPath = path.join(projectPath, "tsconfig.json");
+  if (!fs.existsSync(tsConfigPath)) return pp;
+  const result: TypeScriptProject = {
+    ...pp,
+    isTypeScriptProject: true,
+    tsConfigFileName: tsConfigPath,
+  };
+  return result;
 }
 
 export interface DenoProject extends ProjectPath, TypeScriptProject {
@@ -174,6 +239,16 @@ export function isDenoProject(o: unknown): o is DenoProject {
   return o && typeof o === "object" && "isDenoProject" in o;
 }
 
+export interface DenoProjectByVsCodePlugin extends DenoProject {
+  readonly isDenoProjectByVsCodePlugin: true;
+}
+
+export function isDenoProjectByVsCodePlugin(
+  o: unknown,
+): o is DenoProjectByVsCodePlugin {
+  return o && typeof o === "object" && "isDenoProjectByVsCodePlugin" in o;
+}
+
 export interface DenoProjectByConvention extends DenoProject {
   readonly isDenoProjectByConvention: true;
 }
@@ -182,6 +257,66 @@ export function isDenoProjectByConvention(
   o: unknown,
 ): o is DenoProjectByConvention {
   return o && typeof o === "object" && "isDenoProjectByConvention" in o;
+}
+
+/**
+ * Take a ProjectPath and enrich it as a Deno project.
+ * @param pp The ProjectPath we want to enrich as a Deno project
+ * @returns the enriched ProjectPath
+ */
+export function forceDenoProject(pp: ProjectPath): DenoProject {
+  const projectPath = pp.absProjectPath;
+  const tsConfigFileName = path.join(projectPath, "tsconfig.json");
+  const result: DenoProject = {
+    ...pp,
+    isTypeScriptProject: true,
+    tsConfigFileName: fs.existsSync(tsConfigFileName)
+      ? tsConfigFileName
+      : undefined,
+    isDenoProject: true,
+    updateDepsCandidates: (): PolyglotFile[] => {
+      return [
+        ...guessPolyglotFiles(path.join(projectPath, "**", "mod.ts")),
+        ...guessPolyglotFiles(path.join(projectPath, "**", "deps.ts")),
+        ...guessPolyglotFiles(
+          path.join(projectPath, "**", "deps-test.ts"),
+        ),
+      ];
+    },
+  };
+  return result;
+}
+
+/**
+ * Take a ProjectPath and enrich it as a Deno project if appropriate.
+ * @param ctx the enrichment context
+ * @param pp The ProjectPath we want to enrich as a Deno project
+ * @returns the enriched ProjectPath
+ */
+export function enrichDenoProjectByVsCodePlugin(
+  ctx: { absProjectPath: FsPathAndFileName },
+  pp: ProjectPath,
+): ProjectPath | DenoProjectByVsCodePlugin {
+  if (isDenoProjectByVsCodePlugin(pp)) return pp;
+  if (!pp.absProjectPathExists) return pp;
+
+  const vsCodePSP = vsCodeProjectSettingsPath(pp);
+  if (fs.existsSync(vsCodePSP)) {
+    const settingsJSON = new TypicalJsonFile(
+      path.join(vsCodePSP, "settings.json"),
+    );
+    if (settingsJSON.fileExists) {
+      const contentDict = settingsJSON.contentDict();
+      if (contentDict && contentDict["deno.enable"]) {
+        const result: DenoProjectByVsCodePlugin = {
+          ...forceDenoProject(pp),
+          isDenoProjectByVsCodePlugin: true,
+        };
+        return result;
+      }
+    }
+  }
+  return pp;
 }
 
 // TODO: this is incomplete, needs implementation - it's designed to convert
@@ -238,6 +373,39 @@ export function isNpmPublishableProject(
   o: unknown,
 ): o is NpmPublishableProject {
   return o && typeof o === "object" && "isNpmPublishableProject" in o;
+}
+
+/**
+ * Take a ProjectPath and enrich it as a NodeJS NPM project if appropriate.
+ * @param ctx the enrichment context
+ * @param pp The ProjectPath we want to enrich as a NodeJS NPM project
+ * @returns the enriched ProjectPath
+ */
+export function enrichNpmProject(
+  ctx: { absProjectPath: FsPathAndFileName },
+  pp: ProjectPath,
+): ProjectPath | NpmProject | NpmPublishableProject {
+  if (isNpmProject(pp)) return pp;
+  if (!pp.absProjectPathExists) return pp;
+
+  const projectPath = pp.absProjectPath;
+  const npmPkgConfig = new NpmPackageConfig(
+    path.join(projectPath, "package.json"),
+  );
+  if (!npmPkgConfig.isValid) return pp;
+  let regular: NpmProject = {
+    ...pp,
+    isNpmProject: true,
+    npmPackageConfig: npmPkgConfig,
+  };
+  if (npmPkgConfig.isPublishable) {
+    const publishable: NpmPublishableProject = {
+      ...regular,
+      isNpmPublishableProject: true,
+    };
+    return publishable;
+  }
+  return regular;
 }
 
 function isURL(text: string | URL): boolean {
