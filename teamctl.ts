@@ -4,7 +4,7 @@ import * as mod from "./mod.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.7.1";
+const $VERSION = "v0.7.2";
 const docoptSpec = `
 Visual Studio Team Projects Controller.
 
@@ -108,6 +108,7 @@ export async function publishProjectHandler(
         pp,
         options,
       );
+      await runShellCommand(`git push`, pp, options);
     } else {
       console.error(`${pp.absProjectPath} is not a Git Work Tree`);
     }
