@@ -103,6 +103,7 @@ export async function versionHandler(
 if (import.meta.main) {
   const handlers: CommandHandler[] = [
     setupOrUpgradeHandler,
+    denoUpdateHandler,
     versionHandler,
   ];
   try {
