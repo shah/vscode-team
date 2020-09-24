@@ -3,7 +3,7 @@ import docopt, {
 } from "https://denopkg.com/Eyal-Shalev/docopt.js@v1.0.1/src/docopt.ts";
 import * as mod from "./mod.ts";
 
-const $VERSION = "v0.9.0";
+const $VERSION = "v0.9.1";
 const docoptSpec = `
 Visual Studio Team Workspaces Controller ${$VERSION}.
 
@@ -12,6 +12,7 @@ Usage:
   wsctl vscws inspect folders <file.code-workspace>
   wsctl vscws settings sync (deno|auto) <file.code-workspace> [--tag=<tag>] [--dry-run] [--verbose]
   wsctl vscws git clone <file.code-workspace> <repos-home-path> [--create-repos-path] [--dry-run] [--verbose]
+  wsctl vscws git fetch <file.code-workspace> [--dry-run]
   wsctl vscws git pull <file.code-workspace> [--dry-run]
   wsctl vscws git status <file.code-workspace> [--dry-run]
   wsctl vscws git commit <message> <file.code-workspace> [--dry-run]
@@ -160,21 +161,24 @@ export async function vscwsGitStatusHandler(
   }
 }
 
-export async function vscwsGitPullHandler(
+export async function vscwsGitFetchPullHandler(
   options: DocOptions,
 ): Promise<true | void> {
   const {
     vscws,
     git,
     pull,
+    fetch,
     "<file.code-workspace>": wsFileName,
     "--dry-run": dryRun,
   } = options;
-  if (vscws && git && pull && wsFileName) {
+  if (vscws && git && (pull || fetch) && wsFileName) {
     await mod.workspaceFoldersGitCommandHandler(
-      dryRun ? true : false,
+      false, // fetch and pull have their own dry run
       wsFileName as (string[] | string),
-      `pull`,
+      pull
+        ? `pull${dryRun ? " --dry-run" : ""}`
+        : `fetch${dryRun ? " --dry-run" : ""}`,
       (ctx) => {
         return mod.postShellCmdBlockStatusReporter(ctx.folder.path);
       },
@@ -435,7 +439,7 @@ if (import.meta.main) {
   const handlers: CommandHandler[] = [
     vscwsInspectFoldersHandler,
     vscwsGitCloneHandler,
-    vscwsGitPullHandler,
+    vscwsGitFetchPullHandler,
     vscwsGitStatusHandler,
     vscwsGitCommitHandler,
     vscwsNpmSingleCommandHandler,
