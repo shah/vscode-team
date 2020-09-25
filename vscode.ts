@@ -242,9 +242,28 @@ export async function setupWorkspaces(
     & {
       readonly dryRun: boolean;
       readonly verbose: boolean;
+      readonly pullMasterWsRepoFirst: boolean;
     },
 ): Promise<void> {
   if (!isValidGitReposContext(ctx)) return;
+  if (ctx.pullMasterWsRepoFirst) {
+    const masterWsProject = prj.enrichProjectPath(
+      { absProjectPath: ctx.workspacesMasterRepo },
+    );
+    if (prj.isGitWorkTree(masterWsProject)) {
+      await shell.runShellCommand(
+        { dryRun: false }, // dry-run is supported by git pull directly
+        {
+          cwd: masterWsProject.absProjectPath,
+          cmd: shell.commandComponents(
+            `git pull${ctx.dryRun ? " --dry-run" : ""}`,
+          ),
+        },
+        shell.shellCmdStdOutHandler,
+        shell.shellCmdStdErrHandler,
+      );
+    }
+  }
   if (ctx.verbose) {
     console.log(
       `Setting up ${ctx.workspacesMasterRepo} *.code-workspace files into ${ctx.reposHomePath}`,

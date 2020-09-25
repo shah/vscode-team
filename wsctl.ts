@@ -3,12 +3,12 @@ import docopt, {
 } from "https://denopkg.com/Eyal-Shalev/docopt.js@v1.0.1/src/docopt.ts";
 import * as mod from "./mod.ts";
 
-const $VERSION = "v0.9.1";
+const $VERSION = "v0.9.2";
 const docoptSpec = `
 Visual Studio Team Workspaces Controller ${$VERSION}.
 
 Usage:
-  wsctl setup <workspaces-home-path> <repos-home-path> [--create-repos-path] [--dry-run] [--verbose]
+  wsctl setup <workspaces-home-path> <repos-home-path> [--no-pull] [--create-repos-path] [--dry-run] [--verbose]
   wsctl vscws inspect folders <file.code-workspace>
   wsctl vscws settings sync (deno|auto) <file.code-workspace> [--tag=<tag>] [--dry-run] [--verbose]
   wsctl vscws git clone <file.code-workspace> <repos-home-path> [--create-repos-path] [--dry-run] [--verbose]
@@ -74,6 +74,7 @@ export async function setupHandler(
     "--create-repos-path": createReposPath,
     "--dry-run": dryRun,
     "--verbose": verbose,
+    "--no-pull": noPullFirst,
   } = options;
   if (setup && workspacesHomePath && reposHomePath) {
     mod.setupWorkspaces({
@@ -81,6 +82,7 @@ export async function setupHandler(
       reposHomePath: reposHomePath.toString(),
       dryRun: dryRun ? true : false,
       verbose: verbose ? true : false,
+      pullMasterWsRepoFirst: noPullFirst ? false : true,
       reposHomePathDoesNotExistHandler: () => {
         if (createReposPath && reposHomePath) {
           if (dryRun) {
