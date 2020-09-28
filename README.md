@@ -1,13 +1,12 @@
 # Visual Studio Code Team utilities
 
-This repo contains common Visual Studio Code and similar IDE reusable artifacts
-to automatically setup sandbox engineering environments for a variety of
-project types.
+This repo contains common Visual Studio Code and similar IDE reusable artifacts to automatically setup sandbox engineering environments for a variety of project types.
 
 ## Deno
 
 This library requires Deno. The following instructions assume Deno is installed.
-You should the following to your shell:
+
+To make calling these scripts more convenient, you should add the following to your shell:
 
 ```bash
 # Get the latest version of the module(s)
@@ -15,6 +14,7 @@ export VSCODE_TEAM_VERSION=`curl -s https://api.github.com/repos/shah/vscode-tea
 
 # Setup aliases tied to the latest version
 alias projectctl="deno run -A --unstable 'https://denopkg.com/shah/vscode-team@${VSCODE_TEAM_VERSION}/projectctl.ts'"
+alias configctl="deno run -A --unstable 'https://denopkg.com/shah/vscode-team@${VSCODE_TEAM_VERSION}/configctl.ts'"
 alias wsctl="deno run -A --unstable 'https://denopkg.com/shah/vscode-team@${VSCODE_TEAM_VERSION}/wsctl.ts'"
 ```
 
@@ -47,8 +47,9 @@ Options:
 
 ## Running in any project directories:
 
-This will run the latest version directly from GitHub and setup your Deno project
-with `.vscode` (`settings.json` and `extensions.json`):
+This will run the latest version directly from GitHub and setup your Deno project by generating `.vscode/settings.json` and `.vscode/extensions.json` from the typesafe configuration settings defined in [vscode-settings.ts](vscode-settings.ts). 
+
+In order to use the settings, just run: 
 
 ```bash
 projectctl deno setup
@@ -65,6 +66,38 @@ To publish the project (tag it and push it to GitHub, for example):
 ```bash
 projectctl deno publish
 ```
+
+# Visual Studio Code Configuration Controller 
+
+Visual Studio Code and other configuration settings are managed in [vscode-settings.ts](vscode-settings.ts). In order to use the settings you can run, for example, `projectctl deno setup` (see above). 
+
+If you want to run other config-related commands, use the `configctl.ts` script:
+
+```bash
+❯ configctl --help
+Visual Studio Settings Configuration Controller.
+
+Usage:
+  configctl inspect deno settings
+  configctl inspect deno extensions [--recommended]
+  configctl -h | --help
+  configctl --version
+
+Options:
+  -h --help            Show this screen
+  --version            Show version
+```
+
+## Running in any project directories:
+
+This will run the latest version directly from GitHub and show the settings that should be put into `.vscode` (`settings.json` and `extensions.json`):
+
+```bash
+configctl inspect deno settings
+configctl inspect deno extensions --recommended
+```
+
+The above commnands are helpful because the actual Deno settings are managed as type-safe content in [vscode-settings.ts](vscode-settings.ts) but VS Code expects settings to be in JSON. The `configctl` command can emit settings in JSON and other more common formats but keep the source in a type-safe language like TypeScript. 
 
 # Workspaces Controller `wsctl.ts`
 
@@ -163,8 +196,8 @@ projectl deno publish
 
 # TODO and Roadmap
 
+* The `configctl.ts` file is newer than `projectctl.ts` and `wsctl.ts` and `configctl.ts` uses a better, more reusable, CLI infrastructure. We need to refactor `wsctl.ts` and `projectctl.ts` to use that newer structure.
 * The `projectctl.ts` file is newer than `wsctl.ts` and has updated functionality at the project level that needs to be carried over to the workspace processors level. 
-
 * Use [github.com/tsconfig/bases](https://github.com/tsconfig/bases) as good example for how to create `tsconfig.json` versions in stdlib.
 * Define standard approach to using [python-shell](https://github.com/extrabacon/python-shell) to integrate Pyton scripts in from NodeJS. Consider adapting it to Deno too, see [how-to-run-a-python-script-from-deno](https://stackoverflow.com/questions/61710787/how-to-run-a-python-script-from-deno).
 * Add support for [Executable Books](https://executablebooks.org) project
