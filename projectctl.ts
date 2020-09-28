@@ -1,9 +1,13 @@
 import { docopt as cli } from "./deps.ts";
 import * as mod from "./mod.ts";
 
+// TODO: Use the new `cli.ts` reusable CLI instead of (older) custom one here.
+//       See example in configctl.ts of how to properly organize the CLI so
+//       that the code works in a CLI or as a library.
+
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.9.2";
+const $VERSION = "v0.9.3";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
@@ -118,16 +122,18 @@ export async function publishProjectHandler(
 export async function denoSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
-  const { deno, setup, upgrade, "--tag": tag } = options;
+  const { deno, setup, upgrade } = options;
   if (deno && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
-    if (startPP.absProjectPathExists) {
-      await mod.copyVsCodeSettingsFromGitHub("deno", {
-        srcRepoTag: tag ? tag.toString() : undefined,
-        projectHomePath: startPP.absProjectPath,
-        dryRun: isDryRun(options),
-        verbose: isVerbose(options),
-      });
+    if (mod.isVsCodeProjectWorkTree(startPP)) {
+      if (!isDryRun(options)) {
+        startPP.vsCodeConfig.writeSettings(mod.denoSettings);
+        startPP.vsCodeConfig.writeExtensions(mod.denoExtensions);
+      }
+      if (isDryRun || isVerbose(options)) {
+        console.log(startPP.vsCodeConfig.settingsFileName);
+        console.log(startPP.vsCodeConfig.extensionsFileName);
+      }
       const upgraded = acquireProjectPath(options);
       if (isVerbose(options)) console.dir(upgraded);
       if (!mod.isDenoProject(upgraded)) {

@@ -3,7 +3,11 @@ import docopt, {
 } from "https://denopkg.com/Eyal-Shalev/docopt.js@v1.0.1/src/docopt.ts";
 import * as mod from "./mod.ts";
 
-const $VERSION = "v0.9.2";
+// TODO: Use the new `cli.ts` reusable CLI instead of (older) custom one here.
+//       See example in configctl.ts of how to properly organize the CLI so
+//       that the code works in a CLI or as a library.
+
+const $VERSION = "v0.9.3";
 const docoptSpec = `
 Visual Studio Team Workspaces Controller ${$VERSION}.
 

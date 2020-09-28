@@ -1,5 +1,6 @@
 import { fs, path } from "./deps.ts";
 import * as dl from "./download.ts";
+import * as vscConfig from "./vscode-settings.ts";
 
 export type FsPathOnly = string;
 export type AbsoluteFsPath = FsPathOnly;
@@ -41,10 +42,6 @@ export function isProjectPath(o: unknown): o is ProjectPath {
   return o && typeof o === "object" && "isProjectPath" in o;
 }
 
-export function vsCodeProjectSettingsPath(pp: ProjectPath): AbsoluteFsPath {
-  return path.join(pp.absProjectPath, ".vscode");
-}
-
 /**
  * Prepare a project path.
  * @param ctx the enrichment context
@@ -64,6 +61,7 @@ export function prepareProjectPath(
 }
 
 const defaultEnrichers: ProjectPathEnricher[] = [
+  enrichVsCodeWorkTree,
   enrichGitWorkTree,
   enrichDenoProjectByVsCodePlugin,
   enrichNpmProject,
@@ -88,6 +86,83 @@ export function enrichProjectPath(
   for (const tr of transformers) {
     result = tr(ctx, result);
   }
+  return result;
+}
+
+export interface VsCodeProjectWorkTree extends ProjectPath {
+  readonly isVsCodeProjectWorkTree: true;
+  readonly vsCodeConfig: {
+    absConfigPath: AbsoluteFsPath;
+    settingsFileName: AbsoluteFsPathAndFileName;
+    extensionsFileName: AbsoluteFsPathAndFileName;
+    configPathExists: () => boolean;
+    settingsExists: () => boolean;
+    extensionsExists: () => boolean;
+    writeSettings: (settings: vscConfig.Settings) => void;
+    writeExtensions: (extensions: vscConfig.Extension[]) => void;
+  };
+}
+
+export function isVsCodeProjectWorkTree(
+  o: unknown,
+): o is VsCodeProjectWorkTree {
+  return o && typeof o === "object" && "isVsCodeProjectWorkTree" in o;
+}
+
+/**
+ * Take a ProjectPath and enrich it as a Visual Studio Code work tree
+ * @param ctx the enrichment context
+ * @param pp The ProjectPath we want to enrich as a VS Code work tree
+ * @returns the enriched ProjectPath
+ */
+export function enrichVsCodeWorkTree(
+  ctx: { absProjectPath: FsPathAndFileName },
+  pp: ProjectPath,
+): ProjectPath | GitWorkTree {
+  if (isVsCodeProjectWorkTree(pp)) return pp;
+  if (!pp.absProjectPathExists) return pp;
+
+  const configPath = `${pp.absProjectPath}/.vscode`;
+  const configSettingsFileName = `${configPath}/settings.json`;
+  const configExtnFileName = `${configPath}/extensions.json`;
+  const result: VsCodeProjectWorkTree = {
+    ...pp,
+    isVsCodeProjectWorkTree: true,
+    vsCodeConfig: {
+      absConfigPath: configPath,
+      settingsFileName: configSettingsFileName,
+      extensionsFileName: configExtnFileName,
+      configPathExists: (): boolean => {
+        return fs.existsSync(configPath);
+      },
+      settingsExists: (): boolean => {
+        return fs.existsSync(configSettingsFileName);
+      },
+      extensionsExists: (): boolean => {
+        return fs.existsSync(configExtnFileName);
+      },
+      writeSettings: (settings: vscConfig.Settings): void => {
+        // we check first in case .vscode is an existing symlink
+        if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
+        Deno.writeTextFileSync(
+          configSettingsFileName,
+          JSON.stringify(settings, undefined, 2),
+        );
+      },
+      writeExtensions: (extensions: vscConfig.Extension[]) => {
+        // we check first in case .vscode is an existing symlink
+        if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
+        Deno.writeTextFileSync(
+          configExtnFileName,
+          JSON.stringify(
+            vscConfig.extnRecommendations(extensions),
+            undefined,
+            2,
+          ),
+        );
+      },
+    },
+  };
   return result;
 }
 
@@ -306,19 +381,20 @@ export function enrichDenoProjectByVsCodePlugin(
   if (isDenoProjectByVsCodePlugin(pp)) return pp;
   if (!pp.absProjectPathExists) return pp;
 
-  const vsCodePSP = vsCodeProjectSettingsPath(pp);
-  if (fs.existsSync(vsCodePSP)) {
-    const settingsJSON = new TypicalJsonFile(
-      path.join(vsCodePSP, "settings.json"),
-    );
-    if (settingsJSON.fileExists) {
-      const contentDict = settingsJSON.contentDict();
-      if (contentDict && contentDict["deno.enable"]) {
-        const result: DenoProjectByVsCodePlugin = {
-          ...forceDenoProject(pp),
-          isDenoProjectByVsCodePlugin: true,
-        };
-        return result;
+  if (isVsCodeProjectWorkTree(pp)) {
+    if (pp.vsCodeConfig.configPathExists()) {
+      const settingsJSON = new TypicalJsonFile(
+        pp.vsCodeConfig.settingsFileName,
+      );
+      if (settingsJSON.fileExists) {
+        const contentDict = settingsJSON.contentDict();
+        if (contentDict && contentDict["deno.enable"]) {
+          const result: DenoProjectByVsCodePlugin = {
+            ...forceDenoProject(pp),
+            isDenoProjectByVsCodePlugin: true,
+          };
+          return result;
+        }
       }
     }
   }
