@@ -5,6 +5,7 @@ export interface Settings {
   "explorer.openEditors.visible": number;
   "terminal.integrated.fontFamily": FontFamily;
   "editor.formatOnSave": boolean;
+  "git.autofetch": true;
 }
 
 export interface DenoSettings {
@@ -35,6 +36,7 @@ export const commonSettings: Settings = {
   "explorer.openEditors.visible": 0,
   "terminal.integrated.fontFamily": "CascadianCode NF",
   "editor.formatOnSave": true,
+  "git.autofetch": true,
 };
 
 export const denoSettings: Settings & DenoSettings = {
