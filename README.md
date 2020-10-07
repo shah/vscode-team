@@ -68,6 +68,12 @@ To publish the project (tag it and push it to GitHub, for example):
 projectctl deno publish
 ```
 
+To setup linter checks and formatting as Git pre-commit hooks, for example.
+
+```bash
+projectctl git setup
+```
+
 # Visual Studio Code Configuration Controller 
 
 Visual Studio Code and other configuration settings are managed in [vscode-settings.ts](vscode-settings.ts). In order to use the settings you can run, for example, `projectctl deno setup` (see above). 
