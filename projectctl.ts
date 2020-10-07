@@ -1,5 +1,6 @@
-import { docopt as cli } from "./deps.ts";
+import { docopt as cli, tsdsh } from "./deps.ts";
 import * as mod from "./mod.ts";
+import { gitPreCommitCheckCommands } from "./git-settings.ts";
 
 // TODO: Use the new `cli.ts` reusable CLI instead of (older) custom one here.
 //       See example in configctl.ts of how to properly organize the CLI so
@@ -17,6 +18,7 @@ Usage:
   projectctl publish [<project-home>] [--semtag=<version>] [--dry-run]
   projectctl deno (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl deno update [<project-home>] [--dry-run]
+  projectctl git (setup|upgrade) [<project-home>] [--dry-run] [--verbose]
   projectctl -h | --help
   projectctl --version
 
@@ -176,6 +178,33 @@ export async function denoUpdateDependenciesHandler(
   }
 }
 
+export async function gitHookSetupOrUpdate(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const { git, setup, upgrade } = options;
+  if (git && (setup || upgrade)) {
+    const startPP = acquireProjectPath(options);
+    if (mod.isGitWorkTree(startPP)) {
+      if (!isDryRun(options)) {
+        startPP.gitConfig.writeSettings(gitPreCommitCheckCommands());
+      }
+      if (isDryRun || isVerbose(options)) {
+        console.log(startPP.gitConfig.settingsFileName);
+      }
+      const upgraded = acquireProjectPath(options);
+      if (isVerbose(options)) console.dir(upgraded);
+      if (!mod.isGitWorkTree(upgraded)) {
+        console.error(
+          "ERROR: Not a Git tree.",
+        );
+      }
+    } else {
+      console.error(`${startPP.absProjectPath} does not exist.`);
+    }
+    return true;
+  }
+}
+
 export async function ctlVersionHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -191,6 +220,7 @@ if (import.meta.main) {
   const handlers: CommandHandler[] = [
     denoSetupOrUpgradeProjectHandler,
     denoUpdateDependenciesHandler,
+    gitHookSetupOrUpdate,
     inspectProjectHandler,
     publishProjectHandler,
     projectVersionHandler,

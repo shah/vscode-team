@@ -1,6 +1,7 @@
 import { fs, path } from "./deps.ts";
 import * as dl from "./download.ts";
 import * as vscConfig from "./vscode-settings.ts";
+import type * as gitSettings from "./git-settings.ts";
 
 export type FsPathOnly = string;
 export type AbsoluteFsPath = FsPathOnly;
@@ -62,7 +63,7 @@ export function prepareProjectPath(
 
 const defaultEnrichers: ProjectPathEnricher[] = [
   enrichVsCodeWorkTree,
-  enrichGitWorkTree,
+  enrichGitWorkTreeAddPreCommitHook,
   enrichDenoProjectByVsCodePlugin,
   enrichNpmProject,
   enrichTypeScriptProject,
@@ -170,6 +171,13 @@ export interface GitWorkTree extends ProjectPath {
   readonly isGitWorkTree: true;
   readonly gitWorkTree: FsPathOnly;
   readonly gitDir: FsPathOnly;
+  readonly gitConfig: {
+    absConfigPath: AbsoluteFsPath;
+    settingsFileName: AbsoluteFsPathAndFileName;
+    configPathExists: () => boolean;
+    settingsExists: () => boolean;
+    writeSettings: (settings: gitSettings.GitCommitCheckSettings) => void;
+  };
 }
 
 export function isGitWorkTree(o: unknown): o is GitWorkTree {
@@ -182,7 +190,7 @@ export function isGitWorkTree(o: unknown): o is GitWorkTree {
  * @param pp The ProjectPath we want to enrich as a Git work tree
  * @returns the enriched ProjectPath
  */
-export function enrichGitWorkTree(
+export function enrichGitWorkTreeAddPreCommitHook(
   ctx: { absProjectPath: FsPathAndFileName },
   pp: ProjectPath,
 ): ProjectPath | GitWorkTree {
@@ -190,13 +198,39 @@ export function enrichGitWorkTree(
   if (!pp.absProjectPathExists) return pp;
 
   const workingTreePath = pp.absProjectPath;
-  const gitTreePath = path.join(workingTreePath, ".git");
+  const gitTreePath = path.join(workingTreePath, ".git/hooks");
+  const gitCheckFileName = `${gitTreePath}/pre-commit`;
+
   if (fs.existsSync(gitTreePath)) {
     const result: GitWorkTree = {
       ...pp,
       isGitWorkTree: true,
       gitDir: gitTreePath,
       gitWorkTree: workingTreePath,
+      gitConfig: {
+        absConfigPath: gitTreePath,
+        settingsFileName: gitCheckFileName,
+        configPathExists: (): boolean => {
+          return fs.existsSync(gitTreePath);
+        },
+        settingsExists: (): boolean => {
+          return fs.existsSync(gitCheckFileName);
+        },
+        writeSettings: (settings: gitSettings.GitCommitCheckSettings): void => {
+          // we check first in case .git is an existing symlink
+          if (!fs.existsSync(gitTreePath)) fs.ensureDirSync(gitTreePath);
+          Deno.writeTextFileSync(
+            gitCheckFileName,
+            settings,
+          );
+          try {
+            // Deno.chmodSync: This API currently throws on Windows.
+            Deno.chmodSync(gitCheckFileName, 0o764);
+          } catch (e) {
+            console.error(e.message);
+          }
+        },
+      },
     };
     return result;
   }

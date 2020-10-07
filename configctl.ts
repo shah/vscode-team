@@ -21,8 +21,13 @@ export class CliCmdHandlerContext extends cli.TypicalCommandHandlerContext {
 export async function inspectCliHandler(
   ctx: CliCmdHandlerContext,
 ): Promise<true | void> {
-  const { inspect, deno, settings, extensions, "--recommended": recommended } =
-    ctx.cliOptions;
+  const {
+    inspect,
+    deno,
+    settings,
+    extensions,
+    "--recommended": recommended,
+  } = ctx.cliOptions;
   if (inspect && deno) {
     if (settings) {
       console.dir(mod.denoSettings);
