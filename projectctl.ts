@@ -189,7 +189,7 @@ export async function gitHookSetupOrUpdate(
         startPP.gitConfig.writeSettings(gitPreCommitCheckCommands());
       }
       if (isDryRun || isVerbose(options)) {
-        console.log(startPP.gitConfig.settingsFileName);
+        console.log(startPP.gitConfig.preCommitHookFileName);
       }
       const upgraded = acquireProjectPath(options);
       if (isVerbose(options)) console.dir(upgraded);
