@@ -7,7 +7,7 @@ import * as mod from "./mod.ts";
 //       See example in configctl.ts of how to properly organize the CLI so
 //       that the code works in a CLI or as a library.
 
-const $VERSION = "v0.9.3";
+const $VERSION = "v0.9.5";
 const docoptSpec = `
 Visual Studio Team Workspaces Controller ${$VERSION}.
 
