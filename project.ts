@@ -63,7 +63,7 @@ export function prepareProjectPath(
 
 const defaultEnrichers: ProjectPathEnricher[] = [
   enrichVsCodeWorkTree,
-  enrichGitWorkTreeAddPreCommitHook,
+  enrichGitWorkTree,
   enrichDenoProjectByVsCodePlugin,
   enrichNpmProject,
   enrichTypeScriptProject,
@@ -172,10 +172,7 @@ export interface GitWorkTree extends ProjectPath {
   readonly gitWorkTree: FsPathOnly;
   readonly gitDir: FsPathOnly;
   readonly gitConfig: {
-    absConfigPath: AbsoluteFsPath;
-    settingsFileName: AbsoluteFsPathAndFileName;
-    configPathExists: () => boolean;
-    settingsExists: () => boolean;
+    preCommitHookFileName: AbsoluteFsPathAndFileName;
     writeSettings: (settings: gitSettings.GitCommitCheckSettings) => void;
   };
 }
@@ -190,7 +187,7 @@ export function isGitWorkTree(o: unknown): o is GitWorkTree {
  * @param pp The ProjectPath we want to enrich as a Git work tree
  * @returns the enriched ProjectPath
  */
-export function enrichGitWorkTreeAddPreCommitHook(
+export function enrichGitWorkTree(
   ctx: { absProjectPath: FsPathAndFileName },
   pp: ProjectPath,
 ): ProjectPath | GitWorkTree {
@@ -198,8 +195,8 @@ export function enrichGitWorkTreeAddPreCommitHook(
   if (!pp.absProjectPathExists) return pp;
 
   const workingTreePath = pp.absProjectPath;
-  const gitTreePath = path.join(workingTreePath, ".git/hooks");
-  const gitCheckFileName = `${gitTreePath}/pre-commit`;
+  const gitTreePath = path.join(workingTreePath, ".git");
+  const gitCheckFileName = `${gitTreePath}/hooks/pre-commit`;
 
   if (fs.existsSync(gitTreePath)) {
     const result: GitWorkTree = {
@@ -208,14 +205,7 @@ export function enrichGitWorkTreeAddPreCommitHook(
       gitDir: gitTreePath,
       gitWorkTree: workingTreePath,
       gitConfig: {
-        absConfigPath: gitTreePath,
-        settingsFileName: gitCheckFileName,
-        configPathExists: (): boolean => {
-          return fs.existsSync(gitTreePath);
-        },
-        settingsExists: (): boolean => {
-          return fs.existsSync(gitCheckFileName);
-        },
+        preCommitHookFileName: gitCheckFileName,
         writeSettings: (settings: gitSettings.GitCommitCheckSettings): void => {
           // we check first in case .git is an existing symlink
           if (!fs.existsSync(gitTreePath)) fs.ensureDirSync(gitTreePath);
