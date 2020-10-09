@@ -1,6 +1,7 @@
 import { docopt as cli, tsdsh } from "./deps.ts";
 import * as mod from "./mod.ts";
 import { gitPreCommitCheckCommands } from "./git-settings.ts";
+import { isHugoProject } from "./project.ts";
 
 // TODO: Use the new `cli.ts` reusable CLI instead of (older) custom one here.
 //       See example in configctl.ts of how to properly organize the CLI so
@@ -8,7 +9,7 @@ import { gitPreCommitCheckCommands } from "./git-settings.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.9.5";
+const $VERSION = "v0.9.6";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
@@ -18,6 +19,7 @@ Usage:
   projectctl publish [<project-home>] [--semtag=<version>] [--dry-run]
   projectctl deno (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl deno update [<project-home>] [--dry-run]
+  projectctl hugo (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl git (setup|upgrade) [<project-home>] [--dry-run] [--verbose]
   projectctl -h | --help
   projectctl --version
@@ -178,6 +180,35 @@ export async function denoUpdateDependenciesHandler(
   }
 }
 
+export async function hugoSetupOrUpgradeProjectHandler(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const { hugo, setup, upgrade } = options;
+  if (hugo && (setup || upgrade)) {
+    const startPP = acquireProjectPath(options);
+    if (mod.isVsCodeProjectWorkTree(startPP)) {
+      if (!isDryRun(options) && isHugoProject(startPP)) {
+        startPP.vsCodeConfig.writeSettings(mod.commonSettings);
+        startPP.vsCodeConfig.writeExtensions(mod.hugoExtensions);
+      }
+      if (isDryRun(options) || isVerbose(options)) {
+        console.log(startPP.vsCodeConfig.settingsFileName);
+        console.log(startPP.vsCodeConfig.extensionsFileName);
+      }
+      const upgraded = acquireProjectPath(options);
+      if (isVerbose(options)) console.dir(upgraded);
+      if (!mod.isHugoProject(upgraded)) {
+        console.error(
+          "ERROR: Copied VS Code settings but Hugo detection failed.",
+        );
+      }
+    } else {
+      console.error(`${startPP.absProjectPath} does not exist.`);
+    }
+    return true;
+  }
+}
+
 export async function gitHookSetupOrUpdate(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -220,6 +251,7 @@ if (import.meta.main) {
   const handlers: CommandHandler[] = [
     denoSetupOrUpgradeProjectHandler,
     denoUpdateDependenciesHandler,
+    hugoSetupOrUpgradeProjectHandler,
     gitHookSetupOrUpdate,
     inspectProjectHandler,
     publishProjectHandler,

@@ -67,6 +67,7 @@ const defaultEnrichers: ProjectPathEnricher[] = [
   enrichDenoProjectByVsCodePlugin,
   enrichNpmProject,
   enrichTypeScriptProject,
+  enrichHugoProject,
 ];
 
 /**
@@ -362,6 +363,37 @@ export function isDenoProjectByConvention(
   o: unknown,
 ): o is DenoProjectByConvention {
   return o && typeof o === "object" && "isDenoProjectByConvention" in o;
+}
+
+export interface HugoProject extends ProjectPath {
+  readonly isHugoProject: true;
+}
+
+export function isHugoProject(o: unknown): o is HugoProject {
+  return o && typeof o === "object" && "isHugoProject" in o;
+}
+
+export function enrichHugoProject(
+  ctx: { absProjectPath: FsPathAndFileName },
+  pp: ProjectPath,
+): ProjectPath | HugoProject {
+  if (isHugoProject(pp)) return pp;
+  if (!pp.absProjectPathExists) return pp;
+
+  const projectPath = pp.absProjectPath;
+  const hugoThemePath = path.join(projectPath, "themes");
+  const hugoLayoutPath = path.join(projectPath, "layouts");
+  if (
+    !fs.existsSync(hugoThemePath) &&
+    !fs.existsSync(hugoLayoutPath)
+  ) {
+    return pp;
+  }
+  const result: HugoProject = {
+    ...pp,
+    isHugoProject: true,
+  };
+  return result;
 }
 
 /**

@@ -67,6 +67,15 @@ export const denoExtensions: Extension[] = [
   { marketplaceId: "denoland.vscode-deno" },
 ];
 
+export const hugoExtensions: Extension[] = [
+  ...commonExtensions,
+  { marketplaceId: "rusnasonov.vscode-hugo" },
+  { marketplaceId: "eliostruyf.vscode-hugo-themer" },
+  { marketplaceId: "akmittal.hugofy" },
+  { marketplaceId: "budparr.language-hugo-vscode" },
+  { marketplaceId: "ms-edgedevtools.vscode-edge-devtools" },
+];
+
 export function extnRecommendations(
   extns: Extension[],
 ): ExtensionRecommendations {
