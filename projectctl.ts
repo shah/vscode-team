@@ -20,6 +20,7 @@ Usage:
   projectctl deno (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl deno update [<project-home>] [--dry-run]
   projectctl hugo (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  projectctl react (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl git (setup|upgrade) [<project-home>] [--dry-run] [--verbose]
   projectctl -h | --help
   projectctl --version
@@ -236,6 +237,35 @@ export async function gitHookSetupOrUpdate(
   }
 }
 
+export async function reactSetupOrUpgradeProjectHandler(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const { react, setup, upgrade } = options;
+  if (react && (setup || upgrade)) {
+    const startPP = acquireProjectPath(options);
+    if (mod.isVsCodeProjectWorkTree(startPP) && mod.isReactProject(startPP)) {
+      if (!isDryRun(options)) {
+        startPP.reactConfig.writeSettings(mod.reactSettings);
+        startPP.reactConfig.writeExtensions(mod.reactExtensions);
+      }
+      if (isDryRun || isVerbose(options)) {
+        console.log(startPP.reactConfig.settingsFileName);
+        console.log(startPP.reactConfig.extensionsFileName);
+      }
+      const upgraded = acquireProjectPath(options);
+      if (isVerbose(options)) console.dir(upgraded);
+      if (!mod.isReactProject(upgraded)) {
+        console.error(
+          "ERROR: Copied VS Code settings but React project detection failed.",
+        );
+      }
+    } else {
+      console.error(`${startPP.absProjectPath} does not exist.`);
+    }
+    return true;
+  }
+}
+
 export async function ctlVersionHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -253,6 +283,7 @@ if (import.meta.main) {
     denoUpdateDependenciesHandler,
     hugoSetupOrUpgradeProjectHandler,
     gitHookSetupOrUpdate,
+    reactSetupOrUpgradeProjectHandler,
     inspectProjectHandler,
     publishProjectHandler,
     projectVersionHandler,

@@ -33,7 +33,8 @@ Usage:
   projectctl deno (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl deno update [<project-home>] [--dry-run]
   projectctl git (setup|upgrade) [<project-home>] [--dry-run] [--verbose]
-  projectctl hugo (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  projectctl hugo (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run][--verbose]
+  projectctl react (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl -h | --help
   projectctl --version
 

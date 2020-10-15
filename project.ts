@@ -1,6 +1,7 @@
 import { fs, path } from "./deps.ts";
 import * as dl from "./download.ts";
 import * as vscConfig from "./vscode-settings.ts";
+import type * as reactVscodeSettings from "./react-settings.ts";
 import type * as gitSettings from "./git-settings.ts";
 
 export type FsPathOnly = string;
@@ -68,6 +69,7 @@ const defaultEnrichers: ProjectPathEnricher[] = [
   enrichNpmProject,
   enrichTypeScriptProject,
   enrichHugoProject,
+  enrichReactProject,
 ];
 
 /**
@@ -392,6 +394,100 @@ export function enrichHugoProject(
   const result: HugoProject = {
     ...pp,
     isHugoProject: true,
+  };
+  return result;
+}
+
+function isTsConfigJsxReactSet(
+  tsConfigPath: AbsoluteFsPathAndFileName,
+): boolean {
+  const tsConfigJSON = new TypicalJsonFile(tsConfigPath);
+  if (tsConfigJSON.fileExists) {
+    const tsConfigContent = tsConfigJSON.contentDict();
+    if (tsConfigContent) {
+      const compilerOpts = tsConfigContent.compilerOptions as Record<
+        string,
+        string
+      >;
+      return compilerOpts.jsx == "react" ? true : false;
+    }
+  }
+  return false;
+}
+
+export interface ReactProject extends ProjectPath {
+  readonly isReactProject: true;
+  readonly reactConfig: {
+    tsConfigPath: AbsoluteFsPath;
+    settingsFileName: AbsoluteFsPathAndFileName;
+    extensionsFileName: AbsoluteFsPathAndFileName;
+    configPathExists: () => boolean;
+    settingsExists: () => boolean;
+    extensionsExists: () => boolean;
+    writeSettings: (settings: reactVscodeSettings.ReactSettings) => void;
+    writeExtensions: (
+      extensions: vscConfig.Extension[],
+    ) => void;
+  };
+}
+
+export function isReactProject(o: unknown): o is ReactProject {
+  return o && typeof o === "object" && "isReactProject" in o;
+}
+
+export function enrichReactProject(
+  ctx: { absProjectPath: FsPathAndFileName },
+  pp: ProjectPath,
+): ProjectPath | ReactProject {
+  if (isReactProject(pp)) return pp;
+  if (!pp.absProjectPathExists) return pp;
+  const projectPath = pp.absProjectPath;
+  const configPath = `${pp.absProjectPath}/.vscode`;
+  const configSettingsFileName = `${configPath}/settings.json`;
+  const configExtnFileName = `${configPath}/extensions.json`;
+  const tsConfigPath = path.join(projectPath, "tsconfig.json");
+  if (
+    !fs.existsSync(tsConfigPath) || !isTsConfigJsxReactSet(tsConfigPath)
+  ) {
+    return pp;
+  }
+  const result: ReactProject = {
+    ...pp,
+    isReactProject: true,
+    reactConfig: {
+      tsConfigPath: tsConfigPath,
+      settingsFileName: configSettingsFileName,
+      extensionsFileName: configExtnFileName,
+      configPathExists: (): boolean => {
+        return fs.existsSync(tsConfigPath);
+      },
+      settingsExists: (): boolean => {
+        return fs.existsSync(configSettingsFileName);
+      },
+      extensionsExists: (): boolean => {
+        return fs.existsSync(configExtnFileName);
+      },
+      writeSettings: (settings: reactVscodeSettings.ReactSettings): void => {
+        // we check first in case .vscode is an existing symlink
+        if (!fs.existsSync(tsConfigPath)) fs.ensureDirSync(tsConfigPath);
+        Deno.writeTextFileSync(
+          configSettingsFileName,
+          JSON.stringify(settings, undefined, 2),
+        );
+      },
+      writeExtensions: (extensions: vscConfig.Extension[]) => {
+        // we check first in case .vscode is an existing symlink
+        if (!fs.existsSync(tsConfigPath)) fs.ensureDirSync(tsConfigPath);
+        Deno.writeTextFileSync(
+          configExtnFileName,
+          JSON.stringify(
+            vscConfig.extnRecommendations(extensions),
+            undefined,
+            2,
+          ),
+        );
+      },
+    },
   };
   return result;
 }
