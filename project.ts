@@ -403,13 +403,17 @@ function isTsConfigJsxReactSet(
 ): boolean {
   const tsConfigJSON = new TypicalJsonFile(tsConfigPath);
   if (tsConfigJSON.fileExists) {
-    const tsConfigContent = tsConfigJSON.contentDict();
-    if (tsConfigContent) {
-      const compilerOpts = tsConfigContent.compilerOptions as Record<
-        string,
-        string
-      >;
-      return compilerOpts.jsx == "react" ? true : false;
+    try {
+      const tsConfigContent = tsConfigJSON.contentDict();
+      if (tsConfigContent) {
+        const compilerOpts = tsConfigContent.compilerOptions as Record<
+          string,
+          string
+        >;
+        return compilerOpts.jsx == "react" ? true : false;
+      }
+    } catch {
+      return false;
     }
   }
   return false;
