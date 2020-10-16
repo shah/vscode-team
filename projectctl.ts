@@ -9,7 +9,7 @@ import { isHugoProject } from "./project.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.9.6";
+const $VERSION = "v0.9.7";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
