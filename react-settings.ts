@@ -1,11 +1,5 @@
-import type {
-  Extension,
-  Settings,
-} from "./vscode-settings.ts";
-import {
-  commonSettings,
-  commonExtensions,
-} from "./vscode-settings.ts";
+import type { Extension, Settings } from "./vscode-settings.ts";
+import { commonExtensions, commonSettings } from "./vscode-settings.ts";
 
 export interface ReactSettings {
   "typescript.tsdk": "node_modules/typescript/lib";
