@@ -7,7 +7,7 @@ import * as mod from "./mod.ts";
 //       See example in configctl.ts of how to properly organize the CLI so
 //       that the code works in a CLI or as a library.
 
-const $VERSION = "v0.9.7";
+const $VERSION = "v1.0.1";
 const docoptSpec = `
 Visual Studio Team Workspaces Controller ${$VERSION}.
 
@@ -283,6 +283,9 @@ export async function vscwsNpmSingleCommandHandler(
         filter = (ctx: mod.VsCodeWorkspaceFolderContext): boolean => {
           return mod.isNpmPublishableProject(ctx.folder);
         };
+        break;
+      default:
+        filter = undefined;
         break;
     }
     await mod.workspaceFoldersNpmCommandHandler({

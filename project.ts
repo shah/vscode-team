@@ -70,6 +70,7 @@ const defaultEnrichers: ProjectPathEnricher[] = [
   enrichTypeScriptProject,
   enrichHugoProject,
   enrichReactProject,
+  enrichNodeProject,
 ];
 
 /**
@@ -496,6 +497,83 @@ export function enrichReactProject(
   return result;
 }
 
+export interface NodeProject extends ProjectPath {
+  readonly isNodeProject: true;
+  readonly nodeConfig: {
+    settingsFileName: AbsoluteFsPathAndFileName;
+    extensionsFileName: AbsoluteFsPathAndFileName;
+    tsConfigPath: AbsoluteFsPath;
+    settingsExists: () => boolean;
+    extensionsExists: () => boolean;
+    configPathExists: () => boolean;
+    writeSettings: (settings: vscConfig.Settings) => void;
+    writeExtensions: (
+      extensions: vscConfig.Extension[],
+    ) => void;
+  };
+}
+
+export function isNodeProject(o: unknown): o is NodeProject {
+  return o && typeof o === "object" && "isNodeProject" in o;
+}
+
+export function enrichNodeProject(
+  ctx: { absProjectPath: FsPathAndFileName },
+  pp: ProjectPath,
+): ProjectPath | NodeProject {
+  if (isNodeProject(pp)) return pp;
+  if (!pp.absProjectPathExists) return pp;
+  const projectPath = pp.absProjectPath;
+  const configPath = `${pp.absProjectPath}/.vscode`;
+  const configSettingsFileName = `${configPath}/settings.json`;
+  const configExtnFileName = `${configPath}/extensions.json`;
+  const tsConfigPath = path.join(projectPath, "tsconfig.json");
+  if (
+    !fs.existsSync(tsConfigPath)
+  ) {
+    return pp;
+  }
+  const result: NodeProject = {
+    ...pp,
+    isNodeProject: true,
+    nodeConfig: {
+      settingsFileName: configSettingsFileName,
+      extensionsFileName: configExtnFileName,
+      tsConfigPath: tsConfigPath,
+      configPathExists: (): boolean => {
+        return fs.existsSync(tsConfigPath);
+      },
+      settingsExists: (): boolean => {
+        return fs.existsSync(configSettingsFileName);
+      },
+      extensionsExists: (): boolean => {
+        return fs.existsSync(configExtnFileName);
+      },
+      writeSettings: (settings: vscConfig.Settings): void => {
+        // we check first in case .vscode is an existing symlink
+        if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
+        Deno.writeTextFileSync(
+          configSettingsFileName,
+          JSON.stringify(settings, undefined, 2),
+        );
+      },
+      writeExtensions: (extensions: vscConfig.Extension[]) => {
+        // we check first in case .vscode is an existing symlink
+        if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
+        Deno.writeTextFileSync(
+          configExtnFileName,
+          JSON.stringify(
+            vscConfig.extnRecommendations(extensions),
+            undefined,
+            2,
+          ),
+        );
+      },
+    },
+  };
+  return result;
+}
+
 /**
  * Take a ProjectPath and enrich it as a Deno project.
  * @param pp The ProjectPath we want to enrich as a Deno project
@@ -637,7 +715,7 @@ export function enrichNpmProject(
     path.join(projectPath, "package.json"),
   );
   if (!npmPkgConfig.isValid) return pp;
-  let regular: NpmProject = {
+  const regular: NpmProject = {
     ...pp,
     isNpmProject: true,
     npmPackageConfig: npmPkgConfig,

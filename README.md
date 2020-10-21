@@ -35,6 +35,7 @@ Usage:
   projectctl git (setup|upgrade) [<project-home>] [--dry-run] [--verbose]
   projectctl hugo (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run][--verbose]
   projectctl react (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  projectctl node (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl -h | --help
   projectctl --version
 

@@ -9,7 +9,7 @@ import { isHugoProject } from "./project.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v0.9.7";
+const $VERSION = "v1.0.1";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
@@ -21,6 +21,7 @@ Usage:
   projectctl deno update [<project-home>] [--dry-run]
   projectctl hugo (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl react (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  projectctl node (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl git (setup|upgrade) [<project-home>] [--dry-run] [--verbose]
   projectctl -h | --help
   projectctl --version
@@ -266,6 +267,37 @@ export async function reactSetupOrUpgradeProjectHandler(
   }
 }
 
+export async function nodeSetupOrUpgradeProjectHandler(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const { node, setup, upgrade } = options;
+  if (node && (setup || upgrade)) {
+    const startPP = acquireProjectPath(options);
+    if (
+      mod.isVsCodeProjectWorkTree(startPP) && mod.isNodeProject(startPP)
+    ) {
+      if (!isDryRun(options)) {
+        startPP.nodeConfig.writeSettings(mod.nodeSettings);
+        startPP.nodeConfig.writeExtensions(mod.nodeExtensions);
+      }
+      if (isDryRun || isVerbose(options)) {
+        console.log(startPP.nodeConfig.settingsFileName);
+        console.log(startPP.nodeConfig.extensionsFileName);
+      }
+      const upgraded = acquireProjectPath(options);
+      if (isVerbose(options)) console.dir(upgraded);
+      if (!mod.isNodeProject(upgraded)) {
+        console.error(
+          "ERROR: Copied VS Code settings but React project detection failed.",
+        );
+      }
+    } else {
+      console.error(`${startPP.absProjectPath} does not exist.`);
+    }
+    return true;
+  }
+}
+
 export async function ctlVersionHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -284,6 +316,7 @@ if (import.meta.main) {
     hugoSetupOrUpgradeProjectHandler,
     gitHookSetupOrUpdate,
     reactSetupOrUpgradeProjectHandler,
+    nodeSetupOrUpgradeProjectHandler,
     inspectProjectHandler,
     publishProjectHandler,
     projectVersionHandler,
