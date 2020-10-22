@@ -60,6 +60,7 @@ export const commonExtensions: Extension[] = [
   { marketplaceId: "visualstudioexptteam.vscodeintellicode" },
   { marketplaceId: "quicktype.quicktype" },
   { marketplaceId: "axetroy.vscode-changelog-generator" },
+  { marketplaceId: "humao.rest-client" },
 ];
 
 export const denoExtensions: Extension[] = [
