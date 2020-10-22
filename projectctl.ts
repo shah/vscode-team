@@ -9,7 +9,7 @@ import { isHugoProject } from "./project.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v1.0.1";
+const $VERSION = "v1.0.2";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
@@ -22,6 +22,7 @@ Usage:
   projectctl hugo (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl react (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl node (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  projectctl python (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl git (setup|upgrade) [<project-home>] [--dry-run] [--verbose]
   projectctl -h | --help
   projectctl --version
@@ -288,7 +289,38 @@ export async function nodeSetupOrUpgradeProjectHandler(
       if (isVerbose(options)) console.dir(upgraded);
       if (!mod.isNodeProject(upgraded)) {
         console.error(
-          "ERROR: Copied VS Code settings but React project detection failed.",
+          "ERROR: Copied VS Code settings but Node project detection failed.",
+        );
+      }
+    } else {
+      console.error(`${startPP.absProjectPath} does not exist.`);
+    }
+    return true;
+  }
+}
+
+export async function pythonSetupOrUpgradeProjectHandler(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const { python, setup, upgrade } = options;
+  if (python && (setup || upgrade)) {
+    const startPP = acquireProjectPath(options);
+    if (
+      mod.isVsCodeProjectWorkTree(startPP) && mod.isPythonProject(startPP)
+    ) {
+      if (!isDryRun(options)) {
+        startPP.pythonConfig.writeSettings(mod.pythonSettings);
+        startPP.pythonConfig.writeExtensions(mod.pythonExtensions);
+      }
+      if (isDryRun || isVerbose(options)) {
+        console.log(startPP.pythonConfig.settingsFileName);
+        console.log(startPP.pythonConfig.extensionsFileName);
+      }
+      const upgraded = acquireProjectPath(options);
+      if (isVerbose(options)) console.dir(upgraded);
+      if (!mod.isPythonProject(upgraded)) {
+        console.error(
+          "ERROR: Copied VS Code settings but Python project detection failed.",
         );
       }
     } else {
@@ -317,6 +349,7 @@ if (import.meta.main) {
     gitHookSetupOrUpdate,
     reactSetupOrUpgradeProjectHandler,
     nodeSetupOrUpgradeProjectHandler,
+    pythonSetupOrUpgradeProjectHandler,
     inspectProjectHandler,
     publishProjectHandler,
     projectVersionHandler,

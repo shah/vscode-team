@@ -36,6 +36,7 @@ Usage:
   projectctl hugo (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run][--verbose]
   projectctl react (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl node (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
+  projectctl python (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl -h | --help
   projectctl --version
 

@@ -3,6 +3,7 @@ import * as dl from "./download.ts";
 import * as vscConfig from "./vscode-settings.ts";
 import type * as reactVscodeSettings from "./react-settings.ts";
 import type * as gitSettings from "./git-settings.ts";
+import type * as pythonSettings from "./python-settings.ts";
 
 export type FsPathOnly = string;
 export type AbsoluteFsPath = FsPathOnly;
@@ -71,6 +72,7 @@ const defaultEnrichers: ProjectPathEnricher[] = [
   enrichHugoProject,
   enrichReactProject,
   enrichNodeProject,
+  enrichPythonProject,
 ];
 
 /**
@@ -543,6 +545,78 @@ export function enrichNodeProject(
       configPathExists: (): boolean => {
         return fs.existsSync(tsConfigPath);
       },
+      settingsExists: (): boolean => {
+        return fs.existsSync(configSettingsFileName);
+      },
+      extensionsExists: (): boolean => {
+        return fs.existsSync(configExtnFileName);
+      },
+      writeSettings: (settings: vscConfig.Settings): void => {
+        // we check first in case .vscode is an existing symlink
+        if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
+        Deno.writeTextFileSync(
+          configSettingsFileName,
+          JSON.stringify(settings, undefined, 2),
+        );
+      },
+      writeExtensions: (extensions: vscConfig.Extension[]) => {
+        // we check first in case .vscode is an existing symlink
+        if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
+        Deno.writeTextFileSync(
+          configExtnFileName,
+          JSON.stringify(
+            vscConfig.extnRecommendations(extensions),
+            undefined,
+            2,
+          ),
+        );
+      },
+    },
+  };
+  return result;
+}
+
+export interface PythonProject extends ProjectPath {
+  readonly isPythonProject: true;
+  readonly pythonConfig: {
+    settingsFileName: AbsoluteFsPathAndFileName;
+    extensionsFileName: AbsoluteFsPathAndFileName;
+    settingsExists: () => boolean;
+    extensionsExists: () => boolean;
+    writeSettings: (settings: vscConfig.Settings) => void;
+    writeExtensions: (
+      extensions: vscConfig.Extension[],
+    ) => void;
+  };
+}
+
+export function isPythonProject(o: unknown): o is PythonProject {
+  return o && typeof o === "object" && "isPythonProject" in o;
+}
+
+export function enrichPythonProject(
+  ctx: { absProjectPath: FsPathAndFileName },
+  pp: ProjectPath,
+): ProjectPath | PythonProject {
+  if (isPythonProject(pp)) return pp;
+  if (!pp.absProjectPathExists) return pp;
+  const projectPath = pp.absProjectPath;
+  const configPath = `${pp.absProjectPath}/.vscode`;
+  const configSettingsFileName = `${configPath}/settings.json`;
+  const configExtnFileName = `${configPath}/extensions.json`;
+  const pythonRequirements = path.join(projectPath, "requirements.txt");
+  const pythonSetup = path.join(projectPath, "setup.py");
+  if (
+    !fs.existsSync(pythonSetup) && !fs.existsSync(pythonRequirements)
+  ) {
+    return pp;
+  }
+  const result: PythonProject = {
+    ...pp,
+    isPythonProject: true,
+    pythonConfig: {
+      settingsFileName: configSettingsFileName,
+      extensionsFileName: configExtnFileName,
       settingsExists: (): boolean => {
         return fs.existsSync(configSettingsFileName);
       },
