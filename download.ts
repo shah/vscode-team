@@ -21,15 +21,13 @@ export async function download(
   options?: RequestInit,
 ): Promise<DownlodedFile> {
   let file: string;
-  let fullPath: string;
+
   let dir: string = "";
   // deno-lint-ignore ban-types
   let mode: object = {};
-  let finalUrl: string;
-  let size: number;
 
   const response = await fetch(src, options);
-  finalUrl = response.url.replace(/\/$/, "");
+  const finalUrl = response.url.replace(/\/$/, "");
   if (response.status != 200) {
     return Promise.reject(
       new Deno.errors.Http(
@@ -40,7 +38,7 @@ export async function download(
     );
   }
   const content = await response.blob();
-  size = content.size;
+  const size: number = content.size;
   const buffer = await content.arrayBuffer();
   const unit8arr = new Deno.Buffer(buffer).bytes();
   if (
@@ -67,7 +65,7 @@ export async function download(
   dir = dir.replace(/\/$/, "");
   fs.ensureDirSync(dir);
 
-  fullPath = `${dir}/${file}`;
+  const fullPath: string = `${dir}/${file}`;
   Deno.writeFileSync(fullPath, unit8arr, mode);
   return Promise.resolve({ file, dir, fullPath, size });
 }
