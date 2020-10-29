@@ -1,3 +1,4 @@
+import { GitCommitCheckSettings } from "./git-settings.ts";
 import type { Extension, Settings } from "./vscode-settings.ts";
 import { commonExtensions, commonSettings } from "./vscode-settings.ts";
 
@@ -35,3 +36,6 @@ export const pythonExtensions: Extension[] = [
   { marketplaceId: "eamodio.gitlens" },
   { marketplaceId: "bungcip.better-toml" },
 ];
+
+export const gitPythonPrecommitCmd: GitCommitCheckSettings = `#!/bin/zsh
+find . -type f -name "*.py" | xargs pylint `;

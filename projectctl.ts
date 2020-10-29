@@ -1,7 +1,19 @@
 import { docopt as cli, tsdsh } from "./deps.ts";
 import * as mod from "./mod.ts";
-import { gitPreCommitCheckCommands } from "./git-settings.ts";
-import { isHugoProject } from "./project.ts";
+import {
+  gitPreCommitCheckCommands,
+  ProjectLanguageReturnType,
+  ProjectType,
+} from "./git-settings.ts";
+import {
+  isDenoProject,
+  isGitWorkTree,
+  isHugoProject,
+  isNodeProject,
+  isPythonProject,
+  isReactProject,
+  ProjectPath,
+} from "./project.ts";
 
 // TODO: Use the new `cli.ts` reusable CLI instead of (older) custom one here.
 //       See example in configctl.ts of how to properly organize the CLI so
@@ -9,7 +21,7 @@ import { isHugoProject } from "./project.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v1.0.2";
+const $VERSION = "v1.0.3";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
@@ -212,6 +224,20 @@ export async function hugoSetupOrUpgradeProjectHandler(
   }
 }
 
+function detectProjectType(pp: ProjectPath): ProjectLanguageReturnType {
+  if (isGitWorkTree(pp) && isDenoProject(pp)) {
+    return ProjectType.Deno;
+  } else if (isGitWorkTree(pp) && isNodeProject(pp)) {
+    return ProjectType.Node;
+  } else if (isGitWorkTree(pp) && isPythonProject(pp)) {
+    return ProjectType.Python;
+  } else if (isGitWorkTree(pp) && isReactProject(pp)) {
+    return ProjectType.React;
+  } else {
+    return undefined;
+  }
+}
+
 export async function gitHookSetupOrUpdate(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -220,7 +246,14 @@ export async function gitHookSetupOrUpdate(
     const startPP = acquireProjectPath(options);
     if (mod.isGitWorkTree(startPP)) {
       if (!isDryRun(options)) {
-        startPP.gitConfig.writeSettings(gitPreCommitCheckCommands());
+        const projectType: ProjectLanguageReturnType = detectProjectType(
+          startPP,
+        );
+        if (typeof projectType != "undefined") {
+          startPP.gitConfig.writeSettings(
+            gitPreCommitCheckCommands(projectType),
+          );
+        }
       }
       if (isDryRun || isVerbose(options)) {
         console.log(startPP.gitConfig.preCommitHookFileName);
@@ -280,10 +313,16 @@ export async function nodeSetupOrUpgradeProjectHandler(
       if (!isDryRun(options)) {
         startPP.nodeConfig.writeSettings(mod.nodeSettings);
         startPP.nodeConfig.writeExtensions(mod.nodeExtensions);
+        startPP.nodeConfig.writeLintSettings(
+          mod.nodeESLintSettings,
+          mod.nodeESLintIgnoreDirs,
+        );
       }
       if (isDryRun || isVerbose(options)) {
         console.log(startPP.nodeConfig.settingsFileName);
         console.log(startPP.nodeConfig.extensionsFileName);
+        console.log(startPP.nodeConfig.esLintSettings);
+        console.log(startPP.nodeConfig.esLintIgnore);
       }
       const upgraded = acquireProjectPath(options);
       if (isVerbose(options)) console.dir(upgraded);

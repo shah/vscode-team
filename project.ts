@@ -3,7 +3,7 @@ import * as dl from "./download.ts";
 import * as vscConfig from "./vscode-settings.ts";
 import type * as reactVscodeSettings from "./react-settings.ts";
 import type * as gitSettings from "./git-settings.ts";
-import type * as pythonSettings from "./python-settings.ts";
+import { NodeESLintSettings } from "./node-settings.ts";
 
 export type FsPathOnly = string;
 export type AbsoluteFsPath = FsPathOnly;
@@ -217,7 +217,7 @@ export function enrichGitWorkTree(
           if (!fs.existsSync(gitTreePath)) fs.ensureDirSync(gitTreePath);
           Deno.writeTextFileSync(
             gitCheckFileName,
-            settings,
+            settings as string,
           );
           try {
             // Deno.chmodSync: This API currently throws on Windows.
@@ -505,12 +505,18 @@ export interface NodeProject extends ProjectPath {
     settingsFileName: AbsoluteFsPathAndFileName;
     extensionsFileName: AbsoluteFsPathAndFileName;
     tsConfigPath: AbsoluteFsPath;
+    esLintSettings: AbsoluteFsPathAndFileName;
+    esLintIgnore: AbsoluteFsPathAndFileName;
     settingsExists: () => boolean;
     extensionsExists: () => boolean;
     configPathExists: () => boolean;
     writeSettings: (settings: vscConfig.Settings) => void;
     writeExtensions: (
       extensions: vscConfig.Extension[],
+    ) => void;
+    writeLintSettings: (
+      settings: NodeESLintSettings,
+      ignoreDirs: string[],
     ) => void;
   };
 }
@@ -530,6 +536,8 @@ export function enrichNodeProject(
   const configSettingsFileName = `${configPath}/settings.json`;
   const configExtnFileName = `${configPath}/extensions.json`;
   const tsConfigPath = path.join(projectPath, "tsconfig.json");
+  const esLintSettingsPath = `${pp.absProjectPath}/.eslintrc`;
+  const esLintIgnorePath = `${pp.absProjectPath}/.eslintignore`;
   if (
     !fs.existsSync(tsConfigPath)
   ) {
@@ -542,6 +550,8 @@ export function enrichNodeProject(
       settingsFileName: configSettingsFileName,
       extensionsFileName: configExtnFileName,
       tsConfigPath: tsConfigPath,
+      esLintSettings: esLintSettingsPath,
+      esLintIgnore: esLintIgnorePath,
       configPathExists: (): boolean => {
         return fs.existsSync(tsConfigPath);
       },
@@ -570,6 +580,25 @@ export function enrichNodeProject(
             2,
           ),
         );
+      },
+      writeLintSettings: (
+        settings: NodeESLintSettings,
+        ignoreDirs: string[],
+      ) => {
+        Deno.writeTextFileSync(
+          esLintSettingsPath,
+          JSON.stringify(settings, undefined, 2),
+        );
+
+        Deno.createSync(esLintIgnorePath);
+        for (let ignore of ignoreDirs) {
+          ignore += "\n";
+          Deno.writeTextFileSync(
+            esLintIgnorePath,
+            ignore as string,
+            { append: true },
+          );
+        }
       },
     },
   };

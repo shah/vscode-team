@@ -58,6 +58,8 @@ In order to use the settings, just run:
 
 ```bash
 projectctl deno setup
+projectctl node setup .
+projectctl python setup .
 ```
 
 Later, to upgrade:
@@ -72,10 +74,10 @@ To publish the project (tag it and push it to GitHub, for example):
 projectctl deno publish
 ```
 
-To setup linter checks and formatting as Git pre-commit hooks, for example.
+To setup linter checks and formatting as Git pre-commit hooks, for example run the following command in root directory of a NodeJS or Python project.
 
 ```bash
-projectctl git setup
+projectctl git setup .
 ```
 
 # Visual Studio Code Configuration Controller 
