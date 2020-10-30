@@ -313,6 +313,8 @@ export async function nodeSetupOrUpgradeProjectHandler(
       if (!isDryRun(options)) {
         startPP.nodeConfig.writeSettings(mod.nodeSettings);
         startPP.nodeConfig.writeExtensions(mod.nodeExtensions);
+        await runShellCommand(mod.nodeESlintTSDependency, startPP, options);
+        await runShellCommand(mod.nodeESLint, startPP, options);
         startPP.nodeConfig.writeLintSettings(
           mod.nodeESLintSettings,
           mod.nodeESLintIgnoreDirs,

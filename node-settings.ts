@@ -11,7 +11,11 @@ export const nodeExtensions: Extension[] = [
 ];
 
 export const gitNodePrecommitCmd: GitCommitCheckSettings = `#!/bin/zsh
-npm run lint`;
+eslint . --ext .ts`;
+
+export const nodeESlintTSDependency = `npm install typescript --save-dev`;
+export const nodeESLint =
+  `npm install eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin --save-dev`;
 
 export interface NodeESLintSettings {
   "root": true;

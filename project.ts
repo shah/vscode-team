@@ -505,6 +505,7 @@ export interface NodeProject extends ProjectPath {
     settingsFileName: AbsoluteFsPathAndFileName;
     extensionsFileName: AbsoluteFsPathAndFileName;
     tsConfigPath: AbsoluteFsPath;
+    pkgConfigPath: AbsoluteFsPath;
     esLintSettings: AbsoluteFsPathAndFileName;
     esLintIgnore: AbsoluteFsPathAndFileName;
     settingsExists: () => boolean;
@@ -536,6 +537,7 @@ export function enrichNodeProject(
   const configSettingsFileName = `${configPath}/settings.json`;
   const configExtnFileName = `${configPath}/extensions.json`;
   const tsConfigPath = path.join(projectPath, "tsconfig.json");
+  const pkgConfigPath = path.join(projectPath, "package.json");
   const esLintSettingsPath = `${pp.absProjectPath}/.eslintrc`;
   const esLintIgnorePath = `${pp.absProjectPath}/.eslintignore`;
   if (
@@ -550,6 +552,7 @@ export function enrichNodeProject(
       settingsFileName: configSettingsFileName,
       extensionsFileName: configExtnFileName,
       tsConfigPath: tsConfigPath,
+      pkgConfigPath: pkgConfigPath,
       esLintSettings: esLintSettingsPath,
       esLintIgnore: esLintIgnorePath,
       configPathExists: (): boolean => {
