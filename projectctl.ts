@@ -313,8 +313,8 @@ export async function nodeSetupOrUpgradeProjectHandler(
       if (!isDryRun(options)) {
         startPP.nodeConfig.writeSettings(mod.nodeSettings);
         startPP.nodeConfig.writeExtensions(mod.nodeExtensions);
-        await runShellCommand(mod.nodeESlintTSDependency, startPP, options);
-        await runShellCommand(mod.nodeESLint, startPP, options);
+        startPP.nodeConfig.writeNPMConfig(mod.defaultNodeConfig);
+        startPP.nodeConfig.writeTSConfig(mod.defaultTsConfig);
         startPP.nodeConfig.writeLintSettings(
           mod.nodeESLintSettings,
           mod.nodeESLintIgnoreDirs,
@@ -323,6 +323,8 @@ export async function nodeSetupOrUpgradeProjectHandler(
       if (isDryRun || isVerbose(options)) {
         console.log(startPP.nodeConfig.settingsFileName);
         console.log(startPP.nodeConfig.extensionsFileName);
+        console.log(startPP.nodeConfig.pkgConfigPath);
+        console.log(startPP.nodeConfig.tsConfigPath);
         console.log(startPP.nodeConfig.esLintSettings);
         console.log(startPP.nodeConfig.esLintIgnore);
       }

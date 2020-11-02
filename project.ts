@@ -3,7 +3,8 @@ import * as dl from "./download.ts";
 import * as vscConfig from "./vscode-settings.ts";
 import type * as reactVscodeSettings from "./react-settings.ts";
 import type * as gitSettings from "./git-settings.ts";
-import { NodeESLintSettings } from "./node-settings.ts";
+import type { TypeScriptCompilerConfig } from "./tsconfig-settings.ts";
+import { NodeESLintSettings, NodeNPMConfig } from "./node-settings.ts";
 
 export type FsPathOnly = string;
 export type AbsoluteFsPath = FsPathOnly;
@@ -515,6 +516,8 @@ export interface NodeProject extends ProjectPath {
     writeExtensions: (
       extensions: vscConfig.Extension[],
     ) => void;
+    writeNPMConfig: (settings: NodeNPMConfig) => void;
+    writeTSConfig: (settings: TypeScriptCompilerConfig) => void;
     writeLintSettings: (
       settings: NodeESLintSettings,
       ignoreDirs: string[],
@@ -579,6 +582,28 @@ export function enrichNodeProject(
           configExtnFileName,
           JSON.stringify(
             vscConfig.extnRecommendations(extensions),
+            undefined,
+            2,
+          ),
+        );
+      },
+      writeNPMConfig: (settings: NodeNPMConfig) => {
+        if (!fs.existsSync(pkgConfigPath)) fs.ensureDirSync(pkgConfigPath);
+        Deno.writeTextFileSync(
+          pkgConfigPath,
+          JSON.stringify(
+            settings,
+            undefined,
+            2,
+          ),
+        );
+      },
+      writeTSConfig: (settings: TypeScriptCompilerConfig) => {
+        if (!fs.existsSync(tsConfigPath)) fs.ensureDirSync(tsConfigPath);
+        Deno.writeTextFileSync(
+          tsConfigPath,
+          JSON.stringify(
+            settings,
             undefined,
             2,
           ),
