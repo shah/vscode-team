@@ -10,7 +10,7 @@ export const nodeExtensions: Extension[] = [
   ...commonExtensions,
 ];
 
-export interface NodeNPMConfig {
+export interface NodePackageConfig {
   name: string;
   version: string;
   description: string;
@@ -58,7 +58,7 @@ export interface Scripts {
   "lint": string;
 }
 
-export const defaultNodeConfig: NodeNPMConfig = {
+export const defaultNodeConfig: NodePackageConfig = {
   name: "",
   version: "",
   description: "",
