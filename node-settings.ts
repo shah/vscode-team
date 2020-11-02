@@ -114,18 +114,12 @@ export const nodeESLint =
 
 export interface NodeESLintSettings {
   "root": true;
-  "parser": "@typescript-eslint/parser";
+  "parser": string;
   "parserOptions": {
-    project: "./tsconfig.json";
+    project: string;
   };
-  "plugins": [
-    "@typescript-eslint",
-  ];
-  "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended",
-  ];
+  "plugins": string[];
+  "extends": string[];
 }
 
 export const nodeESLintSettings: NodeESLintSettings = {
