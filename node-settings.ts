@@ -89,25 +89,25 @@ export function nodeConfig(
 export const nodeGitPrecommitScript: GitPrecommitScript = `eslint . --ext .ts`;
 
 export interface NodeESLintSettings {
-  "root": true;
-  "parser": string;
-  "parserOptions": {
+  root: true;
+  parser: string;
+  parserOptions: {
     project: string;
   };
-  "plugins": string[];
-  "extends": string[];
+  plugins: string[];
+  extends: string[];
 }
 
 export const nodeESLintSettings: NodeESLintSettings = {
-  "root": true,
-  "parser": "@typescript-eslint/parser",
-  "parserOptions": {
+  root: true,
+  parser: "@typescript-eslint/parser",
+  parserOptions: {
     project: "./tsconfig.json",
   },
-  "plugins": [
+  plugins: [
     "@typescript-eslint",
   ],
-  "extends": [
+  extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
     "plugin:@typescript-eslint/recommended",
