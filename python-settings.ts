@@ -1,4 +1,4 @@
-import { GitCommitCheckSettings } from "./git-settings.ts";
+import { GitPrecommitScript } from "./git-settings.ts";
 import type { Extension, Settings } from "./vscode-settings.ts";
 import { commonExtensions, commonSettings } from "./vscode-settings.ts";
 
@@ -37,5 +37,5 @@ export const pythonExtensions: Extension[] = [
   { marketplaceId: "bungcip.better-toml" },
 ];
 
-export const gitPythonPrecommitCmd: GitCommitCheckSettings = `#!/bin/zsh
-find . -type f -name "*.py" | xargs pylint `;
+export const pythonGitPrecommitScript: GitPrecommitScript =
+  `find . -type f -name "*.py" | xargs pylint `;

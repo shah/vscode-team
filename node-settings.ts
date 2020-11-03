@@ -1,4 +1,4 @@
-import { GitCommitCheckSettings } from "./git-settings.ts";
+import { GitPrecommitScript } from "./git-settings.ts";
 import type { Extension, Settings } from "./vscode-settings.ts";
 import { commonExtensions, commonSettings } from "./vscode-settings.ts";
 
@@ -17,12 +17,7 @@ export interface NodePackageConfig {
   main: string;
   types: string;
   files: string[];
-  scripts: {
-    "prepublishOnly": "tsc --project tsconfig.json";
-    "build": "tsc --project tsconfig.json";
-    "test": "alsatian './**/*.spec.ts'";
-    "lint": "eslint . --ext .ts";
-  };
+  scripts: NodePackageScriptsConfig;
   repository: {
     url: string;
   };
@@ -32,85 +27,66 @@ export interface NodePackageConfig {
   keywords: string[];
   author: string;
   license: string;
-  dependencies: {
-    "content-disposition": "^0.5.3";
-    "file-type": "^14.7.1";
-    "jsdom": "^16.4.0";
-    "uuid": "^8.3.0";
-    "whatwg-mimetype": "^2.3.0";
-  };
+  dependencies: Record<string, string>;
   bugs: {
     url: string;
   };
   homepage: string;
-  devDependencies: {
-    "@types/node": "^14.0.26";
-    "alsatian": "^3.2.1";
-    "ts-node": "^8.10.2";
-    "typescript": "^3.9.7";
+  devDependencies: Record<string, string>;
+}
+
+export interface NodePackageScriptsConfig {
+  prepublishOnly: string;
+  build: string;
+  test: string;
+  lint: string;
+}
+
+export function nodeConfig(
+  config: Partial<NodePackageConfig>,
+): NodePackageConfig {
+  return {
+    name: config.name || "<no name provided>",
+    version: config.version || "<no version provided>",
+    description: config.description || "<no description provided>",
+    main: "",
+    types: "",
+    files: [
+      "dist",
+    ],
+    scripts: config.scripts || {
+      prepublishOnly: "tsc --project tsconfig.json",
+      build: "tsc --project tsconfig.json",
+      test: "alsatian './**/*.spec.ts'",
+      lint: "eslint . --ext .ts",
+    },
+    repository: config.repository || {
+      url: "<no repository provided>",
+    },
+    publishConfig: config.publishConfig || {
+      registry: "https://npm.pkg.github.com/",
+    },
+    keywords: [
+      "url",
+      "uri",
+      "urn",
+    ],
+    author: config.author || "<no author provided>",
+    license: config.license || "MIT",
+    dependencies: config.dependencies || {
+      "npm-package-name": "npm-package-version",
+    },
+    bugs: {
+      url: "",
+    },
+    homepage: config.homepage || "<no-homepage-provided>",
+    devDependencies: config.devDependencies || {
+      "npm-package-name": "npm-package-version",
+    },
   };
 }
 
-export interface Scripts {
-  "prepublishOnly": string;
-  "build": string;
-  "test": string;
-  "lint": string;
-}
-
-export const defaultNodeConfig: NodePackageConfig = {
-  name: "",
-  version: "",
-  description: "",
-  main: "",
-  types: "",
-  files: [
-    "dist",
-  ],
-  scripts: {
-    "prepublishOnly": "tsc --project tsconfig.json",
-    "build": "tsc --project tsconfig.json",
-    "test": "alsatian './**/*.spec.ts'",
-    "lint": "eslint . --ext .ts",
-  },
-  repository: {
-    "url": "",
-  },
-  publishConfig: {
-    "registry": "https://npm.pkg.github.com/",
-  },
-  keywords: [
-    "url",
-    "uri",
-    "urn",
-  ],
-  author: "",
-  license: "MIT",
-  dependencies: {
-    "content-disposition": "^0.5.3",
-    "file-type": "^14.7.1",
-    "jsdom": "^16.4.0",
-    "uuid": "^8.3.0",
-    "whatwg-mimetype": "^2.3.0",
-  },
-  bugs: {
-    "url": "",
-  },
-  homepage: "",
-  devDependencies: {
-    "@types/node": "^14.0.26",
-    "alsatian": "^3.2.1",
-    "ts-node": "^8.10.2",
-    "typescript": "^3.9.7",
-  },
-};
-
-export const gitNodePrecommitCmd: GitCommitCheckSettings = `#!/bin/zsh
-eslint . --ext .ts`;
-
-export const nodeESlintTSDependency = `npm install typescript --save-dev`;
-export const nodeESLint =
-  `npm install eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin --save-dev`;
+export const nodeGitPrecommitScript: GitPrecommitScript = `eslint . --ext .ts`;
 
 export interface NodeESLintSettings {
   "root": true;

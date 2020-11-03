@@ -178,10 +178,6 @@ export interface GitWorkTree extends ProjectPath {
   readonly isGitWorkTree: true;
   readonly gitWorkTree: FsPathOnly;
   readonly gitDir: FsPathOnly;
-  readonly gitConfig: {
-    preCommitHookFileName: AbsoluteFsPathAndFileName;
-    writeSettings: (settings: gitSettings.GitCommitCheckSettings) => void;
-  };
 }
 
 export function isGitWorkTree(o: unknown): o is GitWorkTree {
@@ -203,7 +199,6 @@ export function enrichGitWorkTree(
 
   const workingTreePath = pp.absProjectPath;
   const gitTreePath = path.join(workingTreePath, ".git");
-  const gitCheckFileName = `${gitTreePath}/hooks/pre-commit`;
 
   if (fs.existsSync(gitTreePath)) {
     const result: GitWorkTree = {
@@ -211,23 +206,6 @@ export function enrichGitWorkTree(
       isGitWorkTree: true,
       gitDir: gitTreePath,
       gitWorkTree: workingTreePath,
-      gitConfig: {
-        preCommitHookFileName: gitCheckFileName,
-        writeSettings: (settings: gitSettings.GitCommitCheckSettings): void => {
-          // we check first in case .git is an existing symlink
-          if (!fs.existsSync(gitTreePath)) fs.ensureDirSync(gitTreePath);
-          Deno.writeTextFileSync(
-            gitCheckFileName,
-            settings as string,
-          );
-          try {
-            // Deno.chmodSync: This API currently throws on Windows.
-            Deno.chmodSync(gitCheckFileName, 0o764);
-          } catch (e) {
-            console.error(e.message);
-          }
-        },
-      },
     };
     return result;
   }
@@ -509,6 +487,7 @@ export interface NodeProject extends ProjectPath {
     pkgConfigPath: AbsoluteFsPath;
     esLintSettings: AbsoluteFsPathAndFileName;
     esLintIgnore: AbsoluteFsPathAndFileName;
+    gitPrecommitHook: AbsoluteFsPathAndFileName;
     settingsExists: () => boolean;
     extensionsExists: () => boolean;
     configPathExists: () => boolean;
@@ -522,6 +501,7 @@ export interface NodeProject extends ProjectPath {
       settings: NodeESLintSettings,
       ignoreDirs: string[],
     ) => void;
+    writeGitPrecommitHook: (settings: gitSettings.GitCommitCheckDefn) => void;
   };
 }
 
@@ -543,6 +523,8 @@ export function enrichNodeProject(
   const pkgConfigPath = path.join(projectPath, "package.json");
   const esLintSettingsPath = `${pp.absProjectPath}/.eslintrc`;
   const esLintIgnorePath = `${pp.absProjectPath}/.eslintignore`;
+  const gitTreePath = path.join(projectPath, ".git");
+  const gitCheckFileName = `${gitTreePath}/hooks/pre-commit`;
   if (
     !fs.existsSync(tsConfigPath)
   ) {
@@ -558,6 +540,7 @@ export function enrichNodeProject(
       pkgConfigPath: pkgConfigPath,
       esLintSettings: esLintSettingsPath,
       esLintIgnore: esLintIgnorePath,
+      gitPrecommitHook: gitCheckFileName,
       configPathExists: (): boolean => {
         return fs.existsSync(tsConfigPath);
       },
@@ -628,6 +611,17 @@ export function enrichNodeProject(
           );
         }
       },
+      writeGitPrecommitHook: (
+        gitPrecommitCmd: gitSettings.GitCommitCheckDefn,
+      ) => {
+        if (fs.existsSync(gitTreePath)) {
+          Deno.writeTextFileSync(
+            gitCheckFileName,
+            "#!" + gitPrecommitCmd.scriptLanguage + `\n` +
+              gitPrecommitCmd.script,
+          );
+        }
+      },
     },
   };
   return result;
@@ -638,11 +632,15 @@ export interface PythonProject extends ProjectPath {
   readonly pythonConfig: {
     settingsFileName: AbsoluteFsPathAndFileName;
     extensionsFileName: AbsoluteFsPathAndFileName;
+    gitPrecommitHook: AbsoluteFsPathAndFileName;
     settingsExists: () => boolean;
     extensionsExists: () => boolean;
     writeSettings: (settings: vscConfig.Settings) => void;
     writeExtensions: (
       extensions: vscConfig.Extension[],
+    ) => void;
+    writeGitPrecommitHook: (
+      settings: gitSettings.GitCommitCheckDefn,
     ) => void;
   };
 }
@@ -663,6 +661,8 @@ export function enrichPythonProject(
   const configExtnFileName = `${configPath}/extensions.json`;
   const pythonRequirements = path.join(projectPath, "requirements.txt");
   const pythonSetup = path.join(projectPath, "setup.py");
+  const gitTreePath = path.join(projectPath, ".git");
+  const gitCheckFileName = `${gitTreePath}/hooks/pre-commit`;
   if (
     !fs.existsSync(pythonSetup) && !fs.existsSync(pythonRequirements)
   ) {
@@ -674,6 +674,7 @@ export function enrichPythonProject(
     pythonConfig: {
       settingsFileName: configSettingsFileName,
       extensionsFileName: configExtnFileName,
+      gitPrecommitHook: gitCheckFileName,
       settingsExists: (): boolean => {
         return fs.existsSync(configSettingsFileName);
       },
@@ -699,6 +700,17 @@ export function enrichPythonProject(
             2,
           ),
         );
+      },
+      writeGitPrecommitHook: (
+        gitPrecommitCmd: gitSettings.GitCommitCheckDefn,
+      ) => {
+        if (fs.existsSync(gitTreePath)) {
+          Deno.writeTextFileSync(
+            gitCheckFileName,
+            "#!" + gitPrecommitCmd.scriptLanguage + `\n` +
+              gitPrecommitCmd.script,
+          );
+        }
       },
     },
   };
