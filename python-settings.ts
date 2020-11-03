@@ -4,14 +4,14 @@ import { commonExtensions, commonSettings } from "./vscode-settings.ts";
 
 export interface PythonSettings {
   "explorer.openEditors.visible": 0;
-  "terminal.integrated.shell.linux": "/bin/zsh";
-  "terminal.integrated.fontFamily": "CascadianCode NF";
-  "python.formatting.provider": "black";
-  "python.formatting.blackArgs": ["--line-length", "100"];
-  "python.linting.enabled": true;
-  "python.linting.pylintEnabled": false;
-  "python.linting.mypyEnabled": true;
-  "python.linting.lintOnSave": true;
+  "terminal.integrated.shell.linux": string;
+  "terminal.integrated.fontFamily": string;
+  "python.formatting.provider": string;
+  "python.formatting.blackArgs": string[];
+  "python.linting.enabled": boolean;
+  "python.linting.pylintEnabled": boolean;
+  "python.linting.mypyEnabled": boolean;
+  "python.linting.lintOnSave": boolean;
 }
 
 export const pythonSettings: Settings & PythonSettings = {
