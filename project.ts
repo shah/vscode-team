@@ -2,9 +2,9 @@ import { fs, path } from "./deps.ts";
 import * as dl from "./download.ts";
 import * as vscConfig from "./vscode-settings.ts";
 import type * as reactVscodeSettings from "./react-settings.ts";
-import type * as gitSettings from "./git-settings.ts";
 import type { TypeScriptCompilerConfig } from "./tsconfig-settings.ts";
 import { NodeESLintSettings, NodePackageConfig } from "./node-settings.ts";
+import * as shell from "./shell.ts";
 
 export type FsPathOnly = string;
 export type AbsoluteFsPath = FsPathOnly;
@@ -180,7 +180,9 @@ export interface GitWorkTree extends ProjectPath {
   readonly gitDir: FsPathOnly;
   gitConfig: {
     readonly preCommitHookFileName: AbsoluteFsPathAndFileName;
-    writeSettings: (gitPrecommitCmd: gitSettings.GitCommitCheckDefn) => void;
+    writeGitPreCommitScript: (
+      gitPrecommitCmd: shell.ShellExecutableScriptDefn,
+    ) => void;
   };
 }
 
@@ -212,12 +214,10 @@ export function enrichGitWorkTree(
       gitWorkTree: workingTreePath,
       gitConfig: {
         preCommitHookFileName: gitCheckFileName,
-        writeSettings: (gitPrecommitCmd: gitSettings.GitCommitCheckDefn) => {
-          Deno.writeTextFileSync(
-            gitCheckFileName,
-            "#!" + gitPrecommitCmd.scriptLanguage + `\n` +
-              gitPrecommitCmd.script,
-          );
+        writeGitPreCommitScript: (
+          gitPrecommitCmd: shell.ShellExecutableScriptDefn,
+        ) => {
+          shell.writeGitPreCommitScript(gitCheckFileName, gitPrecommitCmd);
         },
       },
     };

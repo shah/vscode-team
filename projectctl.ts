@@ -1,14 +1,6 @@
 import { docopt as cli, tsdsh } from "./deps.ts";
 import * as mod from "./mod.ts";
-import {
-  isDenoProject,
-  isGitWorkTree,
-  isHugoProject,
-  isNodeProject,
-  isPythonProject,
-  isReactProject,
-  ProjectPath,
-} from "./project.ts";
+import { isGitWorkTree, isHugoProject } from "./project.ts";
 import { nodeGitPrecommitScript } from "./node-settings.ts";
 import { pythonGitPrecommitScript } from "./python-settings.ts";
 
@@ -269,7 +261,7 @@ export async function nodeSetupOrUpgradeProjectHandler(
           mod.nodeESLintSettings,
           mod.nodeESLintIgnoreDirs,
         );
-        startPP.gitConfig.writeSettings(
+        startPP.gitConfig.writeGitPreCommitScript(
           { scriptLanguage: "/bin/zsh", script: nodeGitPrecommitScript },
         );
       }
@@ -309,7 +301,7 @@ export async function pythonSetupOrUpgradeProjectHandler(
       if (!isDryRun(options)) {
         startPP.pythonConfig.writeSettings(mod.pythonSettings);
         startPP.pythonConfig.writeExtensions(mod.pythonExtensions);
-        startPP.gitConfig.writeSettings(
+        startPP.gitConfig.writeGitPreCommitScript(
           { scriptLanguage: "/bin/zsh", script: pythonGitPrecommitScript },
         );
       }
