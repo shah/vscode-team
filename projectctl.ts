@@ -257,7 +257,8 @@ export async function nodeSetupOrUpgradeProjectHandler(
   if (node && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
     if (
-      mod.isVsCodeProjectWorkTree(startPP) && mod.isNodeProject(startPP)
+      mod.isVsCodeProjectWorkTree(startPP) && mod.isGitWorkTree(startPP) &&
+      mod.isNodeProject(startPP)
     ) {
       if (!isDryRun(options)) {
         startPP.nodeConfig.writeSettings(mod.nodeSettings);
@@ -268,7 +269,7 @@ export async function nodeSetupOrUpgradeProjectHandler(
           mod.nodeESLintSettings,
           mod.nodeESLintIgnoreDirs,
         );
-        startPP.nodeConfig.writeGitPrecommitHook(
+        startPP.gitConfig.writeSettings(
           { scriptLanguage: "/bin/zsh", script: nodeGitPrecommitScript },
         );
       }
@@ -302,12 +303,13 @@ export async function pythonSetupOrUpgradeProjectHandler(
   if (python && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
     if (
-      mod.isVsCodeProjectWorkTree(startPP) && mod.isPythonProject(startPP)
+      mod.isVsCodeProjectWorkTree(startPP) && isGitWorkTree(startPP) &&
+      mod.isPythonProject(startPP)
     ) {
       if (!isDryRun(options)) {
         startPP.pythonConfig.writeSettings(mod.pythonSettings);
         startPP.pythonConfig.writeExtensions(mod.pythonExtensions);
-        startPP.pythonConfig.writeGitPrecommitHook(
+        startPP.gitConfig.writeSettings(
           { scriptLanguage: "/bin/zsh", script: pythonGitPrecommitScript },
         );
       }

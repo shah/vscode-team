@@ -29,7 +29,7 @@ export interface NodePackageConfig {
   license: string;
   dependencies: Record<string, string>;
   bugs: {
-    url: string;
+    url?: string;
   };
   homepage: string;
   devDependencies: Record<string, string>;
@@ -66,19 +66,13 @@ export function nodeConfig(
     publishConfig: config.publishConfig || {
       registry: "https://npm.pkg.github.com/",
     },
-    keywords: [
-      "url",
-      "uri",
-      "urn",
-    ],
+    keywords: config.keywords || [],
     author: config.author || "<no author provided>",
     license: config.license || "MIT",
     dependencies: config.dependencies || {
       "npm-package-name": "npm-package-version",
     },
-    bugs: {
-      url: "",
-    },
+    bugs: config.bugs || {},
     homepage: config.homepage || "<no-homepage-provided>",
     devDependencies: config.devDependencies || {
       "npm-package-name": "npm-package-version",

@@ -178,6 +178,10 @@ export interface GitWorkTree extends ProjectPath {
   readonly isGitWorkTree: true;
   readonly gitWorkTree: FsPathOnly;
   readonly gitDir: FsPathOnly;
+  gitConfig: {
+    readonly preCommitHookFileName: AbsoluteFsPathAndFileName;
+    writeSettings: (gitPrecommitCmd: gitSettings.GitCommitCheckDefn) => void;
+  };
 }
 
 export function isGitWorkTree(o: unknown): o is GitWorkTree {
@@ -199,13 +203,23 @@ export function enrichGitWorkTree(
 
   const workingTreePath = pp.absProjectPath;
   const gitTreePath = path.join(workingTreePath, ".git");
-
+  const gitCheckFileName = `${gitTreePath}/hooks/pre-commit`;
   if (fs.existsSync(gitTreePath)) {
     const result: GitWorkTree = {
       ...pp,
       isGitWorkTree: true,
       gitDir: gitTreePath,
       gitWorkTree: workingTreePath,
+      gitConfig: {
+        preCommitHookFileName: gitCheckFileName,
+        writeSettings: (gitPrecommitCmd: gitSettings.GitCommitCheckDefn) => {
+          Deno.writeTextFileSync(
+            gitCheckFileName,
+            "#!" + gitPrecommitCmd.scriptLanguage + `\n` +
+              gitPrecommitCmd.script,
+          );
+        },
+      },
     };
     return result;
   }
@@ -501,7 +515,6 @@ export interface NodeProject extends ProjectPath {
       settings: NodeESLintSettings,
       ignoreDirs: string[],
     ) => void;
-    writeGitPrecommitHook: (settings: gitSettings.GitCommitCheckDefn) => void;
   };
 }
 
@@ -611,17 +624,6 @@ export function enrichNodeProject(
           );
         }
       },
-      writeGitPrecommitHook: (
-        gitPrecommitCmd: gitSettings.GitCommitCheckDefn,
-      ) => {
-        if (fs.existsSync(gitTreePath)) {
-          Deno.writeTextFileSync(
-            gitCheckFileName,
-            "#!" + gitPrecommitCmd.scriptLanguage + `\n` +
-              gitPrecommitCmd.script,
-          );
-        }
-      },
     },
   };
   return result;
@@ -639,9 +641,9 @@ export interface PythonProject extends ProjectPath {
     writeExtensions: (
       extensions: vscConfig.Extension[],
     ) => void;
-    writeGitPrecommitHook: (
-      settings: gitSettings.GitCommitCheckDefn,
-    ) => void;
+    // writeGitPrecommitHook: (
+    //   settings: gitSettings.GitCommitCheckDefn,
+    // ) => void;
   };
 }
 
@@ -701,17 +703,17 @@ export function enrichPythonProject(
           ),
         );
       },
-      writeGitPrecommitHook: (
-        gitPrecommitCmd: gitSettings.GitCommitCheckDefn,
-      ) => {
-        if (fs.existsSync(gitTreePath)) {
-          Deno.writeTextFileSync(
-            gitCheckFileName,
-            "#!" + gitPrecommitCmd.scriptLanguage + `\n` +
-              gitPrecommitCmd.script,
-          );
-        }
-      },
+      // writeGitPrecommitHook: (
+      //   gitPrecommitCmd: gitSettings.GitCommitCheckDefn,
+      // ) => {
+      //   if (fs.existsSync(gitTreePath)) {
+      //     Deno.writeTextFileSync(
+      //       gitCheckFileName,
+      //       "#!" + gitPrecommitCmd.scriptLanguage + `\n` +
+      //         gitPrecommitCmd.script,
+      //     );
+      //   }
+      // },
     },
   };
   return result;
