@@ -424,8 +424,8 @@ export interface ReactProject extends ProjectPath {
     configPathExists: () => boolean;
     settingsExists: () => boolean;
     extensionsExists: () => boolean;
-    writeSettings: (settings: reactVscodeSettings.ReactSettings) => void;
-    writeExtensions: (
+    writeVSCodeSettings: (settings: reactVscodeSettings.ReactSettings) => void;
+    writeVSCodeExtensions: (
       extensions: vscConfig.Extension[],
     ) => void;
   };
@@ -467,7 +467,9 @@ export function enrichReactProject(
       extensionsExists: (): boolean => {
         return fs.existsSync(configExtnFileName);
       },
-      writeSettings: (settings: reactVscodeSettings.ReactSettings): void => {
+      writeVSCodeSettings: (
+        settings: reactVscodeSettings.ReactSettings,
+      ): void => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(tsConfigPath)) fs.ensureDirSync(tsConfigPath);
         Deno.writeTextFileSync(
@@ -475,7 +477,7 @@ export function enrichReactProject(
           JSON.stringify(settings, undefined, 2),
         );
       },
-      writeExtensions: (extensions: vscConfig.Extension[]) => {
+      writeVSCodeExtensions: (extensions: vscConfig.Extension[]) => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(tsConfigPath)) fs.ensureDirSync(tsConfigPath);
         Deno.writeTextFileSync(
@@ -505,8 +507,8 @@ export interface NodeProject extends ProjectPath {
     settingsExists: () => boolean;
     extensionsExists: () => boolean;
     configPathExists: () => boolean;
-    writeSettings: (settings: vscConfig.Settings) => void;
-    writeExtensions: (
+    writeVSCodeSettings: (settings: vscConfig.Settings) => void;
+    writeVSCodeExtensions: (
       extensions: vscConfig.Extension[],
     ) => void;
     writePackageConfig: (settings: NodePackageConfig) => void;
@@ -563,7 +565,7 @@ export function enrichNodeProject(
       extensionsExists: (): boolean => {
         return fs.existsSync(configExtnFileName);
       },
-      writeSettings: (settings: vscConfig.Settings): void => {
+      writeVSCodeSettings: (settings: vscConfig.Settings): void => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
         Deno.writeTextFileSync(
@@ -571,7 +573,7 @@ export function enrichNodeProject(
           JSON.stringify(settings, undefined, 2),
         );
       },
-      writeExtensions: (extensions: vscConfig.Extension[]) => {
+      writeVSCodeExtensions: (extensions: vscConfig.Extension[]) => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
         Deno.writeTextFileSync(
@@ -637,13 +639,10 @@ export interface PythonProject extends ProjectPath {
     gitPrecommitHook: AbsoluteFsPathAndFileName;
     settingsExists: () => boolean;
     extensionsExists: () => boolean;
-    writeSettings: (settings: vscConfig.Settings) => void;
-    writeExtensions: (
+    writeVSCodeSettings: (settings: vscConfig.Settings) => void;
+    writeVSCodeExtensions: (
       extensions: vscConfig.Extension[],
     ) => void;
-    // writeGitPrecommitHook: (
-    //   settings: gitSettings.GitCommitCheckDefn,
-    // ) => void;
   };
 }
 
@@ -683,7 +682,7 @@ export function enrichPythonProject(
       extensionsExists: (): boolean => {
         return fs.existsSync(configExtnFileName);
       },
-      writeSettings: (settings: vscConfig.Settings): void => {
+      writeVSCodeSettings: (settings: vscConfig.Settings): void => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
         Deno.writeTextFileSync(
@@ -691,7 +690,7 @@ export function enrichPythonProject(
           JSON.stringify(settings, undefined, 2),
         );
       },
-      writeExtensions: (extensions: vscConfig.Extension[]) => {
+      writeVSCodeExtensions: (extensions: vscConfig.Extension[]) => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
         Deno.writeTextFileSync(
@@ -703,17 +702,6 @@ export function enrichPythonProject(
           ),
         );
       },
-      // writeGitPrecommitHook: (
-      //   gitPrecommitCmd: gitSettings.GitCommitCheckDefn,
-      // ) => {
-      //   if (fs.existsSync(gitTreePath)) {
-      //     Deno.writeTextFileSync(
-      //       gitCheckFileName,
-      //       "#!" + gitPrecommitCmd.scriptLanguage + `\n` +
-      //         gitPrecommitCmd.script,
-      //     );
-      //   }
-      // },
     },
   };
   return result;

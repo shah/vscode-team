@@ -221,8 +221,8 @@ export async function reactSetupOrUpgradeProjectHandler(
     const startPP = acquireProjectPath(options);
     if (mod.isVsCodeProjectWorkTree(startPP) && mod.isReactProject(startPP)) {
       if (!isDryRun(options)) {
-        startPP.reactConfig.writeSettings(mod.reactSettings);
-        startPP.reactConfig.writeExtensions(mod.reactExtensions);
+        startPP.reactConfig.writeVSCodeSettings(mod.reactSettings);
+        startPP.reactConfig.writeVSCodeExtensions(mod.reactExtensions);
       }
       if (isDryRun || isVerbose(options)) {
         console.log(startPP.reactConfig.settingsFileName);
@@ -253,8 +253,8 @@ export async function nodeSetupOrUpgradeProjectHandler(
       mod.isNodeProject(startPP)
     ) {
       if (!isDryRun(options)) {
-        startPP.nodeConfig.writeSettings(mod.nodeSettings);
-        startPP.nodeConfig.writeExtensions(mod.nodeExtensions);
+        startPP.nodeConfig.writeVSCodeSettings(mod.nodeSettings);
+        startPP.nodeConfig.writeVSCodeExtensions(mod.nodeExtensions);
         startPP.nodeConfig.writePackageConfig(mod.nodeConfig({}));
         startPP.nodeConfig.writeTypescriptConfig(mod.tsConfig({}));
         startPP.nodeConfig.writeLintSettings(
@@ -299,8 +299,8 @@ export async function pythonSetupOrUpgradeProjectHandler(
       mod.isPythonProject(startPP)
     ) {
       if (!isDryRun(options)) {
-        startPP.pythonConfig.writeSettings(mod.pythonSettings);
-        startPP.pythonConfig.writeExtensions(mod.pythonExtensions);
+        startPP.pythonConfig.writeVSCodeSettings(mod.pythonSettings);
+        startPP.pythonConfig.writeVSCodeExtensions(mod.pythonExtensions);
         startPP.gitConfig.writeGitPreCommitScript(
           { scriptLanguage: "/bin/zsh", script: pythonGitPrecommitScript },
         );
