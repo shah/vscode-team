@@ -2,8 +2,9 @@ import { fs, path } from "./deps.ts";
 import * as dl from "./download.ts";
 import * as vscConfig from "./vscode-settings.ts";
 import type * as reactVscodeSettings from "./react-settings.ts";
-import type * as gitSettings from "./git-settings.ts";
-import { NodeESLintSettings } from "./node-settings.ts";
+import type { TypeScriptCompilerConfig } from "./tsconfig-settings.ts";
+import { NodeESLintSettings, NodePackageConfig } from "./node-settings.ts";
+import * as shell from "./shell.ts";
 
 export type FsPathOnly = string;
 export type AbsoluteFsPath = FsPathOnly;
@@ -177,9 +178,11 @@ export interface GitWorkTree extends ProjectPath {
   readonly isGitWorkTree: true;
   readonly gitWorkTree: FsPathOnly;
   readonly gitDir: FsPathOnly;
-  readonly gitConfig: {
-    preCommitHookFileName: AbsoluteFsPathAndFileName;
-    writeSettings: (settings: gitSettings.GitCommitCheckSettings) => void;
+  gitConfig: {
+    readonly preCommitHookFileName: AbsoluteFsPathAndFileName;
+    writeGitPreCommitScript: (
+      gitPrecommitCmd: shell.ShellExecutableScriptDefn,
+    ) => void;
   };
 }
 
@@ -203,7 +206,6 @@ export function enrichGitWorkTree(
   const workingTreePath = pp.absProjectPath;
   const gitTreePath = path.join(workingTreePath, ".git");
   const gitCheckFileName = `${gitTreePath}/hooks/pre-commit`;
-
   if (fs.existsSync(gitTreePath)) {
     const result: GitWorkTree = {
       ...pp,
@@ -212,19 +214,10 @@ export function enrichGitWorkTree(
       gitWorkTree: workingTreePath,
       gitConfig: {
         preCommitHookFileName: gitCheckFileName,
-        writeSettings: (settings: gitSettings.GitCommitCheckSettings): void => {
-          // we check first in case .git is an existing symlink
-          if (!fs.existsSync(gitTreePath)) fs.ensureDirSync(gitTreePath);
-          Deno.writeTextFileSync(
-            gitCheckFileName,
-            settings as string,
-          );
-          try {
-            // Deno.chmodSync: This API currently throws on Windows.
-            Deno.chmodSync(gitCheckFileName, 0o764);
-          } catch (e) {
-            console.error(e.message);
-          }
+        writeGitPreCommitScript: (
+          gitPrecommitCmd: shell.ShellExecutableScriptDefn,
+        ) => {
+          shell.writeGitPreCommitScript(gitCheckFileName, gitPrecommitCmd);
         },
       },
     };
@@ -431,8 +424,8 @@ export interface ReactProject extends ProjectPath {
     configPathExists: () => boolean;
     settingsExists: () => boolean;
     extensionsExists: () => boolean;
-    writeSettings: (settings: reactVscodeSettings.ReactSettings) => void;
-    writeExtensions: (
+    writeVSCodeSettings: (settings: reactVscodeSettings.ReactSettings) => void;
+    writeVSCodeExtensions: (
       extensions: vscConfig.Extension[],
     ) => void;
   };
@@ -474,7 +467,9 @@ export function enrichReactProject(
       extensionsExists: (): boolean => {
         return fs.existsSync(configExtnFileName);
       },
-      writeSettings: (settings: reactVscodeSettings.ReactSettings): void => {
+      writeVSCodeSettings: (
+        settings: reactVscodeSettings.ReactSettings,
+      ): void => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(tsConfigPath)) fs.ensureDirSync(tsConfigPath);
         Deno.writeTextFileSync(
@@ -482,7 +477,7 @@ export function enrichReactProject(
           JSON.stringify(settings, undefined, 2),
         );
       },
-      writeExtensions: (extensions: vscConfig.Extension[]) => {
+      writeVSCodeExtensions: (extensions: vscConfig.Extension[]) => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(tsConfigPath)) fs.ensureDirSync(tsConfigPath);
         Deno.writeTextFileSync(
@@ -505,15 +500,19 @@ export interface NodeProject extends ProjectPath {
     settingsFileName: AbsoluteFsPathAndFileName;
     extensionsFileName: AbsoluteFsPathAndFileName;
     tsConfigPath: AbsoluteFsPath;
+    pkgConfigPath: AbsoluteFsPath;
     esLintSettings: AbsoluteFsPathAndFileName;
     esLintIgnore: AbsoluteFsPathAndFileName;
+    gitPrecommitHook: AbsoluteFsPathAndFileName;
     settingsExists: () => boolean;
     extensionsExists: () => boolean;
     configPathExists: () => boolean;
-    writeSettings: (settings: vscConfig.Settings) => void;
-    writeExtensions: (
+    writeVSCodeSettings: (settings: vscConfig.Settings) => void;
+    writeVSCodeExtensions: (
       extensions: vscConfig.Extension[],
     ) => void;
+    writePackageConfig: (settings: NodePackageConfig) => void;
+    writeTypescriptConfig: (settings: TypeScriptCompilerConfig) => void;
     writeLintSettings: (
       settings: NodeESLintSettings,
       ignoreDirs: string[],
@@ -536,8 +535,11 @@ export function enrichNodeProject(
   const configSettingsFileName = `${configPath}/settings.json`;
   const configExtnFileName = `${configPath}/extensions.json`;
   const tsConfigPath = path.join(projectPath, "tsconfig.json");
+  const pkgConfigPath = path.join(projectPath, "package.json");
   const esLintSettingsPath = `${pp.absProjectPath}/.eslintrc`;
   const esLintIgnorePath = `${pp.absProjectPath}/.eslintignore`;
+  const gitTreePath = path.join(projectPath, ".git");
+  const gitCheckFileName = `${gitTreePath}/hooks/pre-commit`;
   if (
     !fs.existsSync(tsConfigPath)
   ) {
@@ -550,8 +552,10 @@ export function enrichNodeProject(
       settingsFileName: configSettingsFileName,
       extensionsFileName: configExtnFileName,
       tsConfigPath: tsConfigPath,
+      pkgConfigPath: pkgConfigPath,
       esLintSettings: esLintSettingsPath,
       esLintIgnore: esLintIgnorePath,
+      gitPrecommitHook: gitCheckFileName,
       configPathExists: (): boolean => {
         return fs.existsSync(tsConfigPath);
       },
@@ -561,7 +565,7 @@ export function enrichNodeProject(
       extensionsExists: (): boolean => {
         return fs.existsSync(configExtnFileName);
       },
-      writeSettings: (settings: vscConfig.Settings): void => {
+      writeVSCodeSettings: (settings: vscConfig.Settings): void => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
         Deno.writeTextFileSync(
@@ -569,13 +573,35 @@ export function enrichNodeProject(
           JSON.stringify(settings, undefined, 2),
         );
       },
-      writeExtensions: (extensions: vscConfig.Extension[]) => {
+      writeVSCodeExtensions: (extensions: vscConfig.Extension[]) => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
         Deno.writeTextFileSync(
           configExtnFileName,
           JSON.stringify(
             vscConfig.extnRecommendations(extensions),
+            undefined,
+            2,
+          ),
+        );
+      },
+      writePackageConfig: (settings: NodePackageConfig) => {
+        if (!fs.existsSync(pkgConfigPath)) fs.ensureDirSync(pkgConfigPath);
+        Deno.writeTextFileSync(
+          pkgConfigPath,
+          JSON.stringify(
+            settings,
+            undefined,
+            2,
+          ),
+        );
+      },
+      writeTypescriptConfig: (settings: TypeScriptCompilerConfig) => {
+        if (!fs.existsSync(tsConfigPath)) fs.ensureDirSync(tsConfigPath);
+        Deno.writeTextFileSync(
+          tsConfigPath,
+          JSON.stringify(
+            settings,
             undefined,
             2,
           ),
@@ -610,10 +636,11 @@ export interface PythonProject extends ProjectPath {
   readonly pythonConfig: {
     settingsFileName: AbsoluteFsPathAndFileName;
     extensionsFileName: AbsoluteFsPathAndFileName;
+    gitPrecommitHook: AbsoluteFsPathAndFileName;
     settingsExists: () => boolean;
     extensionsExists: () => boolean;
-    writeSettings: (settings: vscConfig.Settings) => void;
-    writeExtensions: (
+    writeVSCodeSettings: (settings: vscConfig.Settings) => void;
+    writeVSCodeExtensions: (
       extensions: vscConfig.Extension[],
     ) => void;
   };
@@ -635,6 +662,8 @@ export function enrichPythonProject(
   const configExtnFileName = `${configPath}/extensions.json`;
   const pythonRequirements = path.join(projectPath, "requirements.txt");
   const pythonSetup = path.join(projectPath, "setup.py");
+  const gitTreePath = path.join(projectPath, ".git");
+  const gitCheckFileName = `${gitTreePath}/hooks/pre-commit`;
   if (
     !fs.existsSync(pythonSetup) && !fs.existsSync(pythonRequirements)
   ) {
@@ -646,13 +675,14 @@ export function enrichPythonProject(
     pythonConfig: {
       settingsFileName: configSettingsFileName,
       extensionsFileName: configExtnFileName,
+      gitPrecommitHook: gitCheckFileName,
       settingsExists: (): boolean => {
         return fs.existsSync(configSettingsFileName);
       },
       extensionsExists: (): boolean => {
         return fs.existsSync(configExtnFileName);
       },
-      writeSettings: (settings: vscConfig.Settings): void => {
+      writeVSCodeSettings: (settings: vscConfig.Settings): void => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
         Deno.writeTextFileSync(
@@ -660,7 +690,7 @@ export function enrichPythonProject(
           JSON.stringify(settings, undefined, 2),
         );
       },
-      writeExtensions: (extensions: vscConfig.Extension[]) => {
+      writeVSCodeExtensions: (extensions: vscConfig.Extension[]) => {
         // we check first in case .vscode is an existing symlink
         if (!fs.existsSync(configPath)) fs.ensureDirSync(configPath);
         Deno.writeTextFileSync(

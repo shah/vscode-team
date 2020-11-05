@@ -4,6 +4,7 @@ export * from "./shell.ts";
 export * from "./vscode-settings.ts";
 export * from "./git-settings.ts";
 export * from "./react-settings.ts";
+export * from "./tsconfig-settings.ts";
 export * from "./node-settings.ts";
 export * from "./python-settings.ts";
 export * from "./vscode.ts";

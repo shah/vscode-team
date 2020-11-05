@@ -32,7 +32,6 @@ Usage:
   projectctl publish [<project-home>] [--semtag=<version>] [--dry-run]
   projectctl deno (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl deno update [<project-home>] [--dry-run]
-  projectctl git (setup|upgrade) [<project-home>] [--dry-run] [--verbose]
   projectctl hugo (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run][--verbose]
   projectctl react (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
   projectctl node (setup|upgrade) [<project-home>] [--tag=<tag>] [--dry-run] [--verbose]
@@ -54,12 +53,12 @@ Options:
 
 This will run the latest version directly from GitHub and setup your Deno project by generating `.vscode/settings.json` and `.vscode/extensions.json` from the typesafe configuration settings defined in [vscode-settings.ts](vscode-settings.ts). 
 
-In order to use the settings, just run: 
+In order to use the settings, just run: Following commands will also setup per project Git precommit hooks.
 
 ```bash
-projectctl deno setup
-projectctl node setup .
-projectctl python setup .
+projectctl deno setup [<project-home>]
+projectctl node setup [<project-home>]
+projectctl python setup [<project-home>]
 ```
 
 Later, to upgrade:
@@ -72,12 +71,6 @@ To publish the project (tag it and push it to GitHub, for example):
 
 ```bash
 projectctl deno publish
-```
-
-To setup linter checks and formatting as Git pre-commit hooks, for example run the following command in root directory of a NodeJS or Python project.
-
-```bash
-projectctl git setup .
 ```
 
 # Visual Studio Code Configuration Controller 

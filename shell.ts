@@ -1,3 +1,34 @@
+import * as fs from "https://deno.land/std@0.75.0/fs/mod.ts";
+
+export interface ShellExecutableScriptDefn {
+  readonly scriptLanguage: "/bin/bash" | "/bin/zsh" | "deno";
+  readonly script: string | string[];
+}
+
+export function writeGitPreCommitScript(
+  fn: string,
+  defn: ShellExecutableScriptDefn,
+  overwrite = false,
+) {
+  if (!overwrite && fs.existsSync(fn)) {
+    console.log(
+      "Git pre-commit hook already exists at " + fn + ", Avoiding overwrite",
+    );
+    return;
+  }
+  Deno.writeTextFileSync(
+    fn,
+    "#!" + defn.scriptLanguage + `\n` +
+      defn.script,
+  );
+  try {
+    // Deno.chmodSync: This API currently throws on Windows.
+    Deno.chmodSync(fn, 0o764);
+  } catch (e) {
+    console.error(e.message);
+  }
+}
+
 export function commandComponents(command: string): string[] {
   // split components of the command with double-quotes support
   const splitCmdRegExp = /[^\s"]+|"([^"]*)"/gi;

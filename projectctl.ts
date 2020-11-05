@@ -1,19 +1,8 @@
 import { docopt as cli, tsdsh } from "./deps.ts";
 import * as mod from "./mod.ts";
-import {
-  gitPreCommitCheckCommands,
-  ProjectLanguageReturnType,
-  ProjectType,
-} from "./git-settings.ts";
-import {
-  isDenoProject,
-  isGitWorkTree,
-  isHugoProject,
-  isNodeProject,
-  isPythonProject,
-  isReactProject,
-  ProjectPath,
-} from "./project.ts";
+import { isGitWorkTree, isHugoProject } from "./project.ts";
+import { nodeGitPrecommitScript } from "./node-settings.ts";
+import { pythonGitPrecommitScript } from "./python-settings.ts";
 
 // TODO: Use the new `cli.ts` reusable CLI instead of (older) custom one here.
 //       See example in configctl.ts of how to properly organize the CLI so
@@ -224,54 +213,6 @@ export async function hugoSetupOrUpgradeProjectHandler(
   }
 }
 
-function detectProjectType(pp: ProjectPath): ProjectLanguageReturnType {
-  if (isGitWorkTree(pp) && isDenoProject(pp)) {
-    return ProjectType.Deno;
-  } else if (isGitWorkTree(pp) && isNodeProject(pp)) {
-    return ProjectType.Node;
-  } else if (isGitWorkTree(pp) && isPythonProject(pp)) {
-    return ProjectType.Python;
-  } else if (isGitWorkTree(pp) && isReactProject(pp)) {
-    return ProjectType.React;
-  } else {
-    return undefined;
-  }
-}
-
-export async function gitHookSetupOrUpdate(
-  options: cli.DocOptions,
-): Promise<true | void> {
-  const { git, setup, upgrade } = options;
-  if (git && (setup || upgrade)) {
-    const startPP = acquireProjectPath(options);
-    if (mod.isGitWorkTree(startPP)) {
-      if (!isDryRun(options)) {
-        const projectType: ProjectLanguageReturnType = detectProjectType(
-          startPP,
-        );
-        if (typeof projectType != "undefined") {
-          startPP.gitConfig.writeSettings(
-            gitPreCommitCheckCommands(projectType),
-          );
-        }
-      }
-      if (isDryRun || isVerbose(options)) {
-        console.log(startPP.gitConfig.preCommitHookFileName);
-      }
-      const upgraded = acquireProjectPath(options);
-      if (isVerbose(options)) console.dir(upgraded);
-      if (!mod.isGitWorkTree(upgraded)) {
-        console.error(
-          "ERROR: Not a Git tree.",
-        );
-      }
-    } else {
-      console.error(`${startPP.absProjectPath} does not exist.`);
-    }
-    return true;
-  }
-}
-
 export async function reactSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -280,8 +221,8 @@ export async function reactSetupOrUpgradeProjectHandler(
     const startPP = acquireProjectPath(options);
     if (mod.isVsCodeProjectWorkTree(startPP) && mod.isReactProject(startPP)) {
       if (!isDryRun(options)) {
-        startPP.reactConfig.writeSettings(mod.reactSettings);
-        startPP.reactConfig.writeExtensions(mod.reactExtensions);
+        startPP.reactConfig.writeVSCodeSettings(mod.reactSettings);
+        startPP.reactConfig.writeVSCodeExtensions(mod.reactExtensions);
       }
       if (isDryRun || isVerbose(options)) {
         console.log(startPP.reactConfig.settingsFileName);
@@ -308,21 +249,30 @@ export async function nodeSetupOrUpgradeProjectHandler(
   if (node && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
     if (
-      mod.isVsCodeProjectWorkTree(startPP) && mod.isNodeProject(startPP)
+      mod.isVsCodeProjectWorkTree(startPP) && mod.isGitWorkTree(startPP) &&
+      mod.isNodeProject(startPP)
     ) {
       if (!isDryRun(options)) {
-        startPP.nodeConfig.writeSettings(mod.nodeSettings);
-        startPP.nodeConfig.writeExtensions(mod.nodeExtensions);
+        startPP.nodeConfig.writeVSCodeSettings(mod.nodeSettings);
+        startPP.nodeConfig.writeVSCodeExtensions(mod.nodeExtensions);
+        startPP.nodeConfig.writePackageConfig(mod.nodeConfig({}));
+        startPP.nodeConfig.writeTypescriptConfig(mod.tsConfig({}));
         startPP.nodeConfig.writeLintSettings(
           mod.nodeESLintSettings,
           mod.nodeESLintIgnoreDirs,
         );
+        startPP.gitConfig.writeGitPreCommitScript(
+          { scriptLanguage: "/bin/zsh", script: nodeGitPrecommitScript },
+        );
       }
-      if (isDryRun || isVerbose(options)) {
+      if (isDryRun(options) || isVerbose(options)) {
         console.log(startPP.nodeConfig.settingsFileName);
         console.log(startPP.nodeConfig.extensionsFileName);
+        console.log(startPP.nodeConfig.pkgConfigPath);
+        console.log(startPP.nodeConfig.tsConfigPath);
         console.log(startPP.nodeConfig.esLintSettings);
         console.log(startPP.nodeConfig.esLintIgnore);
+        console.log(startPP.nodeConfig.gitPrecommitHook);
       }
       const upgraded = acquireProjectPath(options);
       if (isVerbose(options)) console.dir(upgraded);
@@ -345,15 +295,20 @@ export async function pythonSetupOrUpgradeProjectHandler(
   if (python && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
     if (
-      mod.isVsCodeProjectWorkTree(startPP) && mod.isPythonProject(startPP)
+      mod.isVsCodeProjectWorkTree(startPP) && isGitWorkTree(startPP) &&
+      mod.isPythonProject(startPP)
     ) {
       if (!isDryRun(options)) {
-        startPP.pythonConfig.writeSettings(mod.pythonSettings);
-        startPP.pythonConfig.writeExtensions(mod.pythonExtensions);
+        startPP.pythonConfig.writeVSCodeSettings(mod.pythonSettings);
+        startPP.pythonConfig.writeVSCodeExtensions(mod.pythonExtensions);
+        startPP.gitConfig.writeGitPreCommitScript(
+          { scriptLanguage: "/bin/zsh", script: pythonGitPrecommitScript },
+        );
       }
-      if (isDryRun || isVerbose(options)) {
+      if (isDryRun(options) || isVerbose(options)) {
         console.log(startPP.pythonConfig.settingsFileName);
         console.log(startPP.pythonConfig.extensionsFileName);
+        console.log(startPP.pythonConfig.gitPrecommitHook);
       }
       const upgraded = acquireProjectPath(options);
       if (isVerbose(options)) console.dir(upgraded);
@@ -385,7 +340,6 @@ if (import.meta.main) {
     denoSetupOrUpgradeProjectHandler,
     denoUpdateDependenciesHandler,
     hugoSetupOrUpgradeProjectHandler,
-    gitHookSetupOrUpdate,
     reactSetupOrUpgradeProjectHandler,
     nodeSetupOrUpgradeProjectHandler,
     pythonSetupOrUpgradeProjectHandler,
