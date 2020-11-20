@@ -59,22 +59,6 @@ export function acquireProjectPath(options: cli.DocOptions): mod.ProjectPath {
   );
 }
 
-export async function runShellCommand(
-  cmd: string,
-  pp: mod.ProjectPath,
-  options: cli.DocOptions,
-): Promise<void> {
-  await mod.runShellCommand(
-    { dryRun: false }, // dry-run is supported by udd directly
-    {
-      cwd: pp.absProjectPath,
-      cmd: mod.commandComponents(cmd),
-    },
-    mod.shellCmdStdOutHandler,
-    mod.shellCmdStdErrHandler,
-  );
-}
-
 export async function inspectProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -97,7 +81,10 @@ export async function projectVersionHandler(
   if (version) {
     const pp = acquireProjectPath(options);
     if (mod.isGitWorkTree(pp)) {
-      await runShellCommand("git-semtag getfinal", pp, options);
+      await tsdsh.runShellCommandSafely(
+        "git-semtag getfinal",
+        tsdsh.cliVerboseShellOutputOptions,
+      );
     } else {
       console.error(`${pp.absProjectPath} is not a Git Work Tree`);
     }
@@ -112,14 +99,16 @@ export async function publishProjectHandler(
   if (publish) {
     const pp = acquireProjectPath(options);
     if (mod.isGitWorkTree(pp)) {
-      await runShellCommand(
+      const resultSemtag = await tsdsh.runShellCommandSafely(
         `git-semtag final${version ? (" -v " + version) : ""}${
           isDryRun(options) ? " -o" : ""
         }`,
-        pp,
-        options,
+        tsdsh.cliVerboseShellOutputOptions,
       );
-      await runShellCommand(`git push`, pp, options);
+      const resultPush = await tsdsh.runShellCommandSafely(
+        `git push`,
+        tsdsh.cliVerboseShellOutputOptions,
+      );
     } else {
       console.error(`${pp.absProjectPath} is not a Git Work Tree`);
     }
@@ -176,7 +165,10 @@ export async function denoUpdateDependenciesHandler(
       const cmd = `udd${isDryRun(options) ? " --dry-run" : ""} ${
         checkFiles.join(" ")
       }`;
-      await runShellCommand(cmd, dp, options);
+      const result = await tsdsh.runShellCommandSafely(
+        cmd,
+        tsdsh.cliVerboseShellOutputOptions,
+      );
     } else {
       console.error(`Not a Deno project: ${dp.absProjectPath}`);
     }
