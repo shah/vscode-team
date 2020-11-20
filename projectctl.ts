@@ -59,22 +59,6 @@ export function acquireProjectPath(options: cli.DocOptions): mod.ProjectPath {
   );
 }
 
-export async function runShellCommand(
-  cmd: string,
-  pp: mod.ProjectPath,
-  options: cli.DocOptions,
-): Promise<void> {
-  await mod.runShellCommand(
-    { dryRun: false }, // dry-run is supported by udd directly
-    {
-      cwd: pp.absProjectPath,
-      cmd: mod.commandComponents(cmd),
-    },
-    mod.shellCmdStdOutHandler,
-    mod.shellCmdStdErrHandler,
-  );
-}
-
 export async function inspectProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -94,10 +78,16 @@ export async function projectVersionHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
   const { version } = options;
+  let rawOutput: Uint8Array;
   if (version) {
     const pp = acquireProjectPath(options);
     if (mod.isGitWorkTree(pp)) {
-      await runShellCommand("git-semtag getfinal", pp, options);
+      const result = await tsdsh.runShellCommandSafely(
+        "git-semtag getfinal",
+      );
+      if (tsdsh.isExecutionResult(result)) {
+        Deno.stdout.writeSync(result.stdOut);
+      }
     } else {
       console.error(`${pp.absProjectPath} is not a Git Work Tree`);
     }
@@ -112,14 +102,22 @@ export async function publishProjectHandler(
   if (publish) {
     const pp = acquireProjectPath(options);
     if (mod.isGitWorkTree(pp)) {
-      await runShellCommand(
+      const resultSemtag = await tsdsh.runShellCommandSafely(
         `git-semtag final${version ? (" -v " + version) : ""}${
           isDryRun(options) ? " -o" : ""
         }`,
-        pp,
-        options,
       );
-      await runShellCommand(`git push`, pp, options);
+      if (tsdsh.isExecutionResult(resultSemtag)) {
+        Deno.stdout.writeSync(resultSemtag.stdOut);
+      } else if (tsdsh.isShellCommandExceptionResult(resultSemtag)) {
+        console.log("Invalid command");
+      }
+      const resultPush = await tsdsh.runShellCommandSafely(
+        `git push`,
+      );
+      if (tsdsh.isExecutionResult(resultPush)) {
+        Deno.stdout.writeSync(resultPush.stdOut);
+      }
     } else {
       console.error(`${pp.absProjectPath} is not a Git Work Tree`);
     }
@@ -176,7 +174,12 @@ export async function denoUpdateDependenciesHandler(
       const cmd = `udd${isDryRun(options) ? " --dry-run" : ""} ${
         checkFiles.join(" ")
       }`;
-      await runShellCommand(cmd, dp, options);
+      const result = await tsdsh.runShellCommandSafely(cmd);
+      if (tsdsh.isExecutionResult(result)) {
+        Deno.stdout.writeSync(result.stdOut);
+      } else if (tsdsh.isShellCommandExceptionResult(result)) {
+        console.log("Invalid command");
+      }
     } else {
       console.error(`Not a Deno project: ${dp.absProjectPath}`);
     }

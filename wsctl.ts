@@ -159,9 +159,6 @@ export async function vscwsGitStatusHandler(
       dryRun ? true : false,
       wsFileName as (string[] | string),
       "status -s",
-      (ctx) => {
-        return mod.postShellCmdBlockStatusReporter(ctx.folder.path);
-      },
     );
     return true;
   }
@@ -185,9 +182,6 @@ export async function vscwsGitFetchPullHandler(
       pull
         ? `pull${dryRun ? " --dry-run" : ""}`
         : `fetch${dryRun ? " --dry-run" : ""}`,
-      (ctx) => {
-        return mod.postShellCmdBlockStatusReporter(ctx.folder.path);
-      },
     );
     return true;
   }
@@ -216,33 +210,18 @@ export async function vscwsGitCommitHandler(
         false, // we'll use git commit --dry-run instead
         wsFileName as (string[] | string),
         `add${gitDryRun} .`,
-        (ctx) => {
-          return mod.postShellCmdBlockStatusReporter(
-            "==> " + ctx.folder.path + ` (git add${gitDryRun})`,
-          );
-        },
       );
     }
     await mod.workspaceFoldersGitCommandHandler(
       false, // we'll use git commit --dry-run instead
       wsFileName as (string[] | string),
       `commit${gitDryRun} -am "${message}"`,
-      (ctx) => {
-        return mod.postShellCmdBlockStatusReporter(
-          "==> " + ctx.folder.path + ` (git commit -am${gitDryRun})`,
-        );
-      },
     );
     if (addCommitPush) {
       await mod.workspaceFoldersGitCommandHandler(
         false, // we'll use git commit --dry-run instead
         wsFileName as (string[] | string),
         `push${gitDryRun}`,
-        (ctx) => {
-          return mod.postShellCmdBlockStatusReporter(
-            "==> " + ctx.folder.path + ` (git push${gitDryRun})`,
-          );
-        },
       );
     }
     return true;
@@ -295,9 +274,6 @@ export async function vscwsNpmSingleCommandHandler(
         ? nodeHomePath.toString()
         : "/usr/local/bin/node",
       npmCmdParams: npmCmd,
-      reporter: (ctx) => {
-        return mod.postShellCmdBlockStatusReporter(ctx.folder.path);
-      },
       filter: filter,
     });
     return true;
@@ -330,9 +306,6 @@ export async function vscwsNpmVersionHandler(
       npmCmdParams: `${
         noGitTagVersion ? "--no-git-tag-version" : ""
       } version ${version}`,
-      reporter: (ctx) => {
-        return mod.postShellCmdBlockStatusReporter(ctx.folder.path);
-      },
     });
     return true;
   }
@@ -357,13 +330,10 @@ export async function vscwsDenoSingleCommandHandler(
       command: (): string => {
         return lint
           ? "deno lint --unstable"
-          : (fmt ? "deno fmt --unstable -A" : "deno test --unstable -A");
+          : (fmt ? "deno fmt --unstable" : "deno test --unstable -A");
       },
       filter: (ctx): boolean => {
         return mod.isDenoProject(ctx.folder);
-      },
-      reporter: (ctx) => {
-        return mod.postShellCmdBlockStatusReporter(ctx.folder.path);
       },
     });
     return true;
@@ -396,9 +366,6 @@ export async function vscwsDenoUpdateHandler(
       filter: (ctx): boolean => {
         return mod.isDenoProject(ctx.folder) &&
           ctx.folder.updateDepsCandidates().length > 0;
-      },
-      reporter: (ctx) => {
-        return mod.postShellCmdBlockStatusReporter(ctx.folder.path);
       },
     });
     return true;

@@ -1,6 +1,5 @@
 import * as prj from "./project.ts";
-import { fs, path } from "./deps.ts";
-import * as shell from "./shell.ts";
+import { fs, path, tsdsh } from "./deps.ts";
 
 export type VsCodeWorkspaceFsPFN = prj.FsPathAndFileName;
 
@@ -251,17 +250,14 @@ export async function setupWorkspaces(
       { absProjectPath: ctx.workspacesMasterRepo },
     );
     if (prj.isGitWorkTree(masterWsProject)) {
-      await shell.runShellCommand(
-        { dryRun: false }, // dry-run is supported by git pull directly
-        {
-          cwd: masterWsProject.absProjectPath,
-          cmd: shell.commandComponents(
-            `git pull${ctx.dryRun ? " --dry-run" : ""}`,
-          ),
-        },
-        shell.shellCmdStdOutHandler,
-        shell.shellCmdStdErrHandler,
+      const result = await tsdsh.runShellCommandSafely(
+        `git pull${ctx.dryRun ? " --dry-run" : ""}`,
       );
+      if (tsdsh.isExecutionResult(result)) {
+        Deno.stdout.writeSync(result.stdOut);
+      } else if (tsdsh.isShellCommandExceptionResult(result)) {
+        console.log("Invalid command");
+      }
     }
   }
   if (ctx.verbose) {
@@ -314,7 +310,10 @@ export async function gitCloneVsCodeFolders(
     },
 ): Promise<void> {
   if (!isValidGitReposContext(ctx)) return;
-  const cloneRuns: Promise<void>[] = [];
+  const cloneRuns: Promise<tsdsh.RunShellCommandResult>[] = [];
+  let rsCmdOptions: tsdsh.RunShellCommandOptions = {
+    dryRun: ctx.dryRun,
+  };
   vsCodeWorkspaceFolders(ctx).forEach((vscwsFolderCtx) => {
     const cloneCtx = (vscwsFolderCtx as unknown) as (
       & GitReposContext
@@ -336,15 +335,15 @@ export async function gitCloneVsCodeFolders(
           Deno.mkdirSync(repoPathParent, { recursive: true });
         }
       }
+      rsCmdOptions = createRunShellCmdOptionsBlockHeader(
+        vscwsFolderCtx,
+        rsCmdOptions,
+        `Cloned https://${vscwsFolderCtx.folder.path} into ${repoPath}`,
+      );
       cloneRuns.push(
-        shell.runShellCommand(
-          cloneCtx,
+        tsdsh.runShellCommandSafely(
           `git clone --quiet https://${vscwsFolderCtx.folder.path} ${repoPath}`,
-          shell.prepShellCmdStdOutReporter(
-            shell.postShellCmdBlockStatusReporter(
-              `Cloned https://${vscwsFolderCtx.folder.path} into ${repoPath}`,
-            ),
-          ),
+          rsCmdOptions,
         ),
       );
     } else {
@@ -366,25 +365,23 @@ export async function workspaceFoldersGitCommandHandler(
   dryRun: boolean,
   wsFileName: prj.FsPathOnly[] | prj.FsPathOnly,
   gitCmd: string,
-  reporter?: (
-    ctx: VsCodeWorkspaceFolderContext,
-  ) => shell.ShellCmdStatusReporter,
 ): Promise<void> {
-  const cmdRuns: Promise<void>[] = [];
+  const cmdRuns: Promise<tsdsh.RunShellCommandResult>[] = [];
+  let rsCmdOptions: tsdsh.RunShellCommandOptions = {
+    dryRun: dryRun,
+  };
   vsCodeWorkspaceFolders({
     wsFileNames: Array.isArray(wsFileName)
       ? wsFileName
       : [wsFileName.toString()],
   }).forEach((ctx) => {
     if (prj.isGitWorkTree(ctx.folder)) {
-      cmdRuns.push(shell.runShellCommand(
-        { dryRun: dryRun },
-        `git --git-dir=${ctx.folder.gitDir} --work-tree=${ctx.folder.gitWorkTree} ${gitCmd}`,
-        reporter
-          ? shell.prepShellCmdStdOutReporter(reporter(ctx))
-          : shell.shellCmdStdOutHandler,
-        shell.shellCmdStdErrHandler,
-      ));
+      const gitCommand: string =
+        `git --git-dir=${ctx.folder.gitDir} --work-tree=${ctx.folder.gitWorkTree} ${gitCmd}`;
+      rsCmdOptions = createRunShellCmdOptionsBlockHeader(ctx, rsCmdOptions);
+      cmdRuns.push(
+        tsdsh.runShellCommandSafely(gitCommand, rsCmdOptions),
+      );
     }
   });
   await Promise.all(cmdRuns);
@@ -395,14 +392,11 @@ export interface NpmCommandHandlerOptions {
   readonly wsFileName: prj.FsPathOnly[] | prj.FsPathOnly;
   readonly nodeHomePath: prj.FsPathAndFileName;
   readonly npmCmdParams: string;
-  readonly reporter?: (
-    ctx: VsCodeWorkspaceFolderContext,
-  ) => shell.ShellCmdStatusReporter;
   readonly filter?: (ctx: VsCodeWorkspaceFolderContext) => boolean;
 }
 
 export async function workspaceFoldersNpmCommandHandler(
-  { dryRun, wsFileName, nodeHomePath, npmCmdParams, reporter, filter }:
+  { dryRun, wsFileName, nodeHomePath, npmCmdParams, filter }:
     NpmCommandHandlerOptions,
 ): Promise<void> {
   if (
@@ -414,7 +408,10 @@ export async function workspaceFoldersNpmCommandHandler(
     );
     return;
   }
-  const cmdRuns: Promise<void>[] = [];
+  let rsCmdOptions: tsdsh.RunShellCommandOptions = {
+    dryRun: dryRun,
+  };
+  const cmdRuns: Promise<tsdsh.RunShellCommandResult>[] = [];
   vsCodeWorkspaceFolders({
     wsFileNames: Array.isArray(wsFileName)
       ? wsFileName
@@ -422,19 +419,19 @@ export async function workspaceFoldersNpmCommandHandler(
   }).forEach((ctx) => {
     if (prj.isNpmProject(ctx.folder)) {
       if (filter && !filter(ctx)) return;
-      cmdRuns.push(shell.runShellCommand(
-        { dryRun: dryRun },
+      rsCmdOptions = createRunShellCmdOptionsBlockHeader(
+        ctx,
+        rsCmdOptions,
+      );
+      cmdRuns.push(tsdsh.runShellCommandSafely(
         {
           cwd: ctx.folder.absProjectPath,
-          cmd: shell.commandComponents(`npm ${npmCmdParams}`),
+          cmd: tsdsh.commandComponents(`npm ${npmCmdParams}`),
           env: {
             PATH: `${nodeHomePath}/bin:${Deno.env.get("PATH")}`,
           },
         },
-        reporter
-          ? shell.prepShellCmdStdOutReporter(reporter(ctx))
-          : shell.shellCmdStdOutHandler,
-        shell.shellCmdStdErrHandler,
+        rsCmdOptions,
       ));
     }
   });
@@ -445,16 +442,16 @@ export interface DenoProjectHandlerOptions {
   readonly dryRun: boolean;
   readonly wsFileName: prj.FsPathOnly[] | prj.FsPathOnly;
   readonly command: (dp: prj.DenoProject) => string;
-  readonly reporter?: (
-    ctx: VsCodeWorkspaceFolderContext,
-  ) => shell.ShellCmdStatusReporter;
   readonly filter?: (ctx: VsCodeWorkspaceFolderContext) => boolean;
 }
 
 export async function workspaceFoldersDenoProjectHandler(
-  { dryRun, wsFileName, command, reporter, filter }: DenoProjectHandlerOptions,
+  { dryRun, wsFileName, command, filter }: DenoProjectHandlerOptions,
 ): Promise<void> {
-  const cmdRuns: Promise<void>[] = [];
+  let rsCmdOptions: tsdsh.RunShellCommandOptions = {
+    dryRun: dryRun,
+  };
+  const cmdRuns: Promise<tsdsh.RunShellCommandResult>[] = [];
   vsCodeWorkspaceFolders({
     wsFileNames: Array.isArray(wsFileName)
       ? wsFileName
@@ -462,20 +459,37 @@ export async function workspaceFoldersDenoProjectHandler(
   }).forEach((ctx) => {
     if (prj.isDenoProject(ctx.folder)) {
       if (filter && !filter(ctx)) return;
-      cmdRuns.push(shell.runShellCommand(
-        { dryRun: dryRun },
-        {
-          cwd: ctx.folder.absProjectPath,
-          cmd: shell.commandComponents(command(ctx.folder)),
-        },
-        reporter
-          ? shell.prepShellCmdStdOutReporter(reporter(ctx))
-          : shell.shellCmdStdOutHandler,
-        shell.shellCmdStdErrHandler,
-      ));
+      rsCmdOptions = createRunShellCmdOptionsBlockHeader(ctx, rsCmdOptions);
+      cmdRuns.push(
+        tsdsh.runShellCommandSafely(
+          {
+            cwd: ctx.folder.absProjectPath,
+            cmd: tsdsh.commandComponents(command(ctx.folder)),
+          },
+          rsCmdOptions,
+        ),
+      );
     }
   });
   await Promise.all(cmdRuns);
+}
+
+function createRunShellCmdOptionsBlockHeader(
+  ctx: VsCodeWorkspaceFolderContext,
+  rsCmdOptions: tsdsh.RunShellCommandOptions,
+  headerText?: string,
+) {
+  const blockHeader = (): tsdsh.CliVerboseShellBlockHeaderResult => {
+    return {
+      headerText: headerText ? `${headerText}` : `${ctx.folder.path}`,
+      separatorText: "",
+    };
+  };
+  rsCmdOptions = {
+    ...rsCmdOptions,
+    ...tsdsh.cliVerboseShellBlockOutputOptions(blockHeader),
+  };
+  return rsCmdOptions;
 }
 
 export async function copyVsCodeSettingsFromGitHub(
