@@ -78,16 +78,13 @@ export async function projectVersionHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
   const { version } = options;
-  let rawOutput: Uint8Array;
   if (version) {
     const pp = acquireProjectPath(options);
     if (mod.isGitWorkTree(pp)) {
-      const result = await tsdsh.runShellCommandSafely(
+      await tsdsh.runShellCommandSafely(
         "git-semtag getfinal",
+        tsdsh.cliVerboseShellOutputOptions,
       );
-      if (tsdsh.isExecutionResult(result)) {
-        Deno.stdout.writeSync(result.stdOut);
-      }
     } else {
       console.error(`${pp.absProjectPath} is not a Git Work Tree`);
     }
@@ -106,18 +103,12 @@ export async function publishProjectHandler(
         `git-semtag final${version ? (" -v " + version) : ""}${
           isDryRun(options) ? " -o" : ""
         }`,
+        tsdsh.cliVerboseShellOutputOptions,
       );
-      if (tsdsh.isExecutionResult(resultSemtag)) {
-        Deno.stdout.writeSync(resultSemtag.stdOut);
-      } else if (tsdsh.isShellCommandExceptionResult(resultSemtag)) {
-        console.log("Invalid command");
-      }
       const resultPush = await tsdsh.runShellCommandSafely(
         `git push`,
+        tsdsh.cliVerboseShellOutputOptions,
       );
-      if (tsdsh.isExecutionResult(resultPush)) {
-        Deno.stdout.writeSync(resultPush.stdOut);
-      }
     } else {
       console.error(`${pp.absProjectPath} is not a Git Work Tree`);
     }
@@ -174,12 +165,10 @@ export async function denoUpdateDependenciesHandler(
       const cmd = `udd${isDryRun(options) ? " --dry-run" : ""} ${
         checkFiles.join(" ")
       }`;
-      const result = await tsdsh.runShellCommandSafely(cmd);
-      if (tsdsh.isExecutionResult(result)) {
-        Deno.stdout.writeSync(result.stdOut);
-      } else if (tsdsh.isShellCommandExceptionResult(result)) {
-        console.log("Invalid command");
-      }
+      const result = await tsdsh.runShellCommandSafely(
+        cmd,
+        tsdsh.cliVerboseShellOutputOptions,
+      );
     } else {
       console.error(`Not a Deno project: ${dp.absProjectPath}`);
     }

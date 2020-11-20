@@ -252,12 +252,10 @@ export async function setupWorkspaces(
     if (prj.isGitWorkTree(masterWsProject)) {
       const result = await tsdsh.runShellCommandSafely(
         `git pull${ctx.dryRun ? " --dry-run" : ""}`,
+        ctx.verbose
+          ? tsdsh.cliVerboseShellOutputOptions
+          : tsdsh.quietShellOutputOptions,
       );
-      if (tsdsh.isExecutionResult(result)) {
-        Deno.stdout.writeSync(result.stdOut);
-      } else if (tsdsh.isShellCommandExceptionResult(result)) {
-        console.log("Invalid command");
-      }
     }
   }
   if (ctx.verbose) {
