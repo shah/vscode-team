@@ -374,7 +374,7 @@ export async function workspaceFoldersGitCommandHandler(
       : [wsFileName.toString()],
   }).forEach((ctx) => {
     if (prj.isGitWorkTree(ctx.folder)) {
-      const gitCommand: string =
+      const gitCommand =
         `git --git-dir=${ctx.folder.gitDir} --work-tree=${ctx.folder.gitWorkTree} ${gitCmd}`;
       rsCmdOptions = createRunShellCmdOptionsBlockHeader(ctx, rsCmdOptions);
       cmdRuns.push(

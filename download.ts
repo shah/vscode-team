@@ -22,7 +22,7 @@ export async function download(
 ): Promise<DownlodedFile> {
   let file: string;
 
-  let dir: string = "";
+  let dir = "";
   // deno-lint-ignore ban-types
   let mode: object = {};
 
@@ -65,7 +65,7 @@ export async function download(
   dir = dir.replace(/\/$/, "");
   fs.ensureDirSync(dir);
 
-  const fullPath: string = `${dir}/${file}`;
+  const fullPath = `${dir}/${file}`;
   Deno.writeFileSync(fullPath, unit8arr, mode);
   return Promise.resolve({ file, dir, fullPath, size });
 }
