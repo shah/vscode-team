@@ -46,9 +46,10 @@ Options:
 `;
 
 export interface CommandHandler {
-  (options: DocOptions): Promise<true | void>;
+  (options: DocOptions): (Promise<true | void>) | (true | void);
 }
 
+// deno-lint-ignore require-await
 export async function vscwsInspectFoldersHandler(
   options: DocOptions,
 ): Promise<true | void> {
@@ -68,9 +69,9 @@ export async function vscwsInspectFoldersHandler(
   }
 }
 
-export async function setupHandler(
+export function setupHandler(
   options: DocOptions,
-): Promise<true | void> {
+): true | void {
   const {
     setup,
     "<workspaces-home-path>": workspacesHomePath,

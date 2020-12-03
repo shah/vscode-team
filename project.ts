@@ -777,6 +777,7 @@ export function enrichDenoProjectByVsCodePlugin(
 //       # To make the libraries back to polyrepos
 //       "https://denopkg.com/gov-suite/$1/mod.ts"
 
+// deno-lint-ignore require-await
 export async function denoRewriteImportsAsMonoRepo(
   ctx: { projectHome: string },
   depsGlob = "**/*/deps{-test,}.ts",
