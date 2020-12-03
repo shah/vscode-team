@@ -10,7 +10,7 @@ import { pythonGitPrecommitScript } from "./python-settings.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v1.0.3";
+const $VERSION = "v1.0.5";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
