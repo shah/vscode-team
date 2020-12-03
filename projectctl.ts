@@ -122,14 +122,21 @@ export function denoSetupOrUpgradeProjectHandler(
   const { deno, setup, upgrade } = options;
   if (deno && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
-    if (mod.isVsCodeProjectWorkTree(startPP)) {
+    if (
+      mod.isVsCodeProjectWorkTree(startPP) && mod.isGitWorkTree(startPP) &&
+      mod.isDenoProject(startPP)
+    ) {
       if (!isDryRun(options)) {
         startPP.vsCodeConfig.writeSettings(mod.denoSettings);
         startPP.vsCodeConfig.writeExtensions(mod.denoExtensions);
+        startPP.gitConfig.writeGitLabCICDConfig();
+        startPP.gitConfig.writeGitHubActionConfig();
       }
-      if (isDryRun || isVerbose(options)) {
+      if (isDryRun(options) || isVerbose(options)) {
         console.log(startPP.vsCodeConfig.settingsFileName);
         console.log(startPP.vsCodeConfig.extensionsFileName);
+        console.log(startPP.gitConfig.gitLabCICDConfigFile);
+        console.log(startPP.gitConfig.gitHubActionsConfigFile);
       }
       const upgraded = acquireProjectPath(options);
       if (isVerbose(options)) console.dir(upgraded);

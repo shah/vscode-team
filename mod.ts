@@ -8,3 +8,5 @@ export * from "./tsconfig-settings.ts";
 export * from "./node-settings.ts";
 export * from "./python-settings.ts";
 export * from "./vscode.ts";
+export * from "./github-actions-settings.ts";
+export * from "./gitlab-cicd-settings.ts";
