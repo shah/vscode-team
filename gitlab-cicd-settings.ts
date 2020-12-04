@@ -1,24 +1,32 @@
+export interface Image {
+  name: string;
+}
+export interface DenoTest {
+  image: Image;
+  stage: string;
+  script: string[];
+}
+
 export interface GitLabCICDSettings {
-  cicdConfigProperties: Record<string, unknown>;
+  stages: string[];
+  DenoTest: DenoTest;
 }
 
 export function gitLabCIConfig(
   config: Partial<GitLabCICDSettings>,
-): GitLabCICDSettings {
+): Record<string, unknown> {
   return {
-    cicdConfigProperties: config.cicdConfigProperties || {
-      stages: ["testing"],
-      DenoTest: {
-        image: { name: "hayd/deno:latest" },
-        stage: "testing",
-        script: [
-          "deno --version",
-          "deno info",
-          "deno lint --unstable",
-          "deno fmt --unstable",
-          "deno test -A --unstable",
-        ],
-      },
+    stages: config.stages || ["testing"],
+    DenoTest: config.DenoTest || {
+      image: { name: "hayd/deno:latest" },
+      stage: "testing",
+      script: [
+        "deno --version",
+        "deno info",
+        "deno lint --unstable",
+        "deno fmt --unstable",
+        "deno test -A --unstable",
+      ],
     },
   };
 }

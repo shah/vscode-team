@@ -234,7 +234,7 @@ export function enrichGitWorkTree(
           if (!fs.existsSync(cicdConfigFile)) {
             Deno.writeTextFileSync(
               cicdConfigFile,
-              yaml.stringify(gitLabCIConfig({}).cicdConfigProperties),
+              yaml.stringify(gitLabCIConfig({})),
             );
           } else {
             console.log(
