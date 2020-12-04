@@ -7,7 +7,7 @@ import * as mod from "./mod.ts";
 //       See example in configctl.ts of how to properly organize the CLI so
 //       that the code works in a CLI or as a library.
 
-const $VERSION = "v1.0.3";
+const $VERSION = "v1.0.5";
 const docoptSpec = `
 Visual Studio Team Workspaces Controller ${$VERSION}.
 
@@ -46,9 +46,10 @@ Options:
 `;
 
 export interface CommandHandler {
-  (options: DocOptions): Promise<true | void>;
+  (options: DocOptions): (Promise<true | void>) | (true | void);
 }
 
+// deno-lint-ignore require-await
 export async function vscwsInspectFoldersHandler(
   options: DocOptions,
 ): Promise<true | void> {
@@ -68,9 +69,9 @@ export async function vscwsInspectFoldersHandler(
   }
 }
 
-export async function setupHandler(
+export function setupHandler(
   options: DocOptions,
-): Promise<true | void> {
+): true | void {
   const {
     setup,
     "<workspaces-home-path>": workspacesHomePath,

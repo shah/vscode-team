@@ -1,10 +1,12 @@
-import { fs, path } from "./deps.ts";
+import { fs, path, stdEncodeYAML as yaml } from "./deps.ts";
 import * as dl from "./download.ts";
 import * as vscConfig from "./vscode-settings.ts";
 import type * as reactVscodeSettings from "./react-settings.ts";
 import type { TypeScriptCompilerConfig } from "./tsconfig-settings.ts";
 import { NodeESLintSettings, NodePackageConfig } from "./node-settings.ts";
 import * as shell from "./shell.ts";
+import { gitLabCIConfig } from "./gitlab-cicd-settings.ts";
+import { gitHubActionsConfig } from "./github-actions-settings.ts";
 
 export type FsPathOnly = string;
 export type AbsoluteFsPath = FsPathOnly;
@@ -180,9 +182,13 @@ export interface GitWorkTree extends ProjectPath {
   readonly gitDir: FsPathOnly;
   gitConfig: {
     readonly preCommitHookFileName: AbsoluteFsPathAndFileName;
+    readonly gitHubActionsConfigFile: FsPathAndFileName;
+    readonly gitLabCICDConfigFile: FsPathAndFileName;
     writeGitPreCommitScript: (
       gitPrecommitCmd: shell.ShellExecutableScriptDefn,
     ) => void;
+    writeGitLabCICDConfig: () => void;
+    writeGitHubActionConfig: () => void;
   };
 }
 
@@ -206,6 +212,9 @@ export function enrichGitWorkTree(
   const workingTreePath = pp.absProjectPath;
   const gitTreePath = path.join(workingTreePath, ".git");
   const gitCheckFileName = `${gitTreePath}/hooks/pre-commit`;
+  const cicdConfigFile = `${workingTreePath}/.gitlab-ci.yml`;
+  const actionsConfigPath = `${workingTreePath}/.github/workflows`;
+  const actionsConfigFile = `${actionsConfigPath}/github-deno-pipeline.yml`;
   if (fs.existsSync(gitTreePath)) {
     const result: GitWorkTree = {
       ...pp,
@@ -214,10 +223,39 @@ export function enrichGitWorkTree(
       gitWorkTree: workingTreePath,
       gitConfig: {
         preCommitHookFileName: gitCheckFileName,
+        gitLabCICDConfigFile: cicdConfigFile,
+        gitHubActionsConfigFile: actionsConfigFile,
         writeGitPreCommitScript: (
           gitPrecommitCmd: shell.ShellExecutableScriptDefn,
         ) => {
           shell.writeGitPreCommitScript(gitCheckFileName, gitPrecommitCmd);
+        },
+        writeGitLabCICDConfig: () => {
+          if (!fs.existsSync(cicdConfigFile)) {
+            Deno.writeTextFileSync(
+              cicdConfigFile,
+              yaml.stringify(gitLabCIConfig({})),
+            );
+          } else {
+            console.log(
+              `GitLab CI/CD configuration already exists at ${cicdConfigFile}`,
+            );
+          }
+        },
+        writeGitHubActionConfig: () => {
+          if (!fs.existsSync(actionsConfigPath)) {
+            fs.ensureDirSync(actionsConfigPath);
+          }
+          if (!fs.existsSync(actionsConfigFile)) {
+            Deno.writeTextFileSync(
+              actionsConfigFile,
+              yaml.stringify(gitHubActionsConfig({})),
+            );
+          } else {
+            console.log(
+              `GitHub Actions configuration already exists at ${actionsConfigFile}`,
+            );
+          }
         },
       },
     };
@@ -777,6 +815,7 @@ export function enrichDenoProjectByVsCodePlugin(
 //       # To make the libraries back to polyrepos
 //       "https://denopkg.com/gov-suite/$1/mod.ts"
 
+// deno-lint-ignore require-await
 export async function denoRewriteImportsAsMonoRepo(
   ctx: { projectHome: string },
   depsGlob = "**/*/deps{-test,}.ts",

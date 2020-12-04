@@ -10,7 +10,7 @@ import { pythonGitPrecommitScript } from "./python-settings.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v1.0.3";
+const $VERSION = "v1.0.5";
 const docoptSpec = `
 Visual Studio Team Projects Controller ${$VERSION}.
 
@@ -39,7 +39,7 @@ Options:
 `;
 
 export interface CommandHandler {
-  (options: cli.DocOptions): Promise<true | void>;
+  (options: cli.DocOptions): (Promise<true | void>) | (true | void);
 }
 
 export function isDryRun(options: cli.DocOptions): boolean {
@@ -59,9 +59,9 @@ export function acquireProjectPath(options: cli.DocOptions): mod.ProjectPath {
   );
 }
 
-export async function inspectProjectHandler(
+export function inspectProjectHandler(
   options: cli.DocOptions,
-): Promise<true | void> {
+): true | void {
   const { inspect } = options;
   if (inspect) {
     const pp = acquireProjectPath(options);
@@ -116,20 +116,27 @@ export async function publishProjectHandler(
   }
 }
 
-export async function denoSetupOrUpgradeProjectHandler(
+export function denoSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
-): Promise<true | void> {
+): true | void {
   const { deno, setup, upgrade } = options;
   if (deno && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
-    if (mod.isVsCodeProjectWorkTree(startPP)) {
+    if (
+      mod.isVsCodeProjectWorkTree(startPP) && mod.isGitWorkTree(startPP) &&
+      mod.isDenoProject(startPP)
+    ) {
       if (!isDryRun(options)) {
         startPP.vsCodeConfig.writeSettings(mod.denoSettings);
         startPP.vsCodeConfig.writeExtensions(mod.denoExtensions);
+        startPP.gitConfig.writeGitLabCICDConfig();
+        startPP.gitConfig.writeGitHubActionConfig();
       }
-      if (isDryRun || isVerbose(options)) {
+      if (isDryRun(options) || isVerbose(options)) {
         console.log(startPP.vsCodeConfig.settingsFileName);
         console.log(startPP.vsCodeConfig.extensionsFileName);
+        console.log(startPP.gitConfig.gitLabCICDConfigFile);
+        console.log(startPP.gitConfig.gitHubActionsConfigFile);
       }
       const upgraded = acquireProjectPath(options);
       if (isVerbose(options)) console.dir(upgraded);
@@ -176,9 +183,9 @@ export async function denoUpdateDependenciesHandler(
   }
 }
 
-export async function hugoSetupOrUpgradeProjectHandler(
+export function hugoSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
-): Promise<true | void> {
+): true | void {
   const { hugo, setup, upgrade } = options;
   if (hugo && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
@@ -205,9 +212,9 @@ export async function hugoSetupOrUpgradeProjectHandler(
   }
 }
 
-export async function reactSetupOrUpgradeProjectHandler(
+export function reactSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
-): Promise<true | void> {
+): true | void {
   const { react, setup, upgrade } = options;
   if (react && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
@@ -234,9 +241,9 @@ export async function reactSetupOrUpgradeProjectHandler(
   }
 }
 
-export async function nodeSetupOrUpgradeProjectHandler(
+export function nodeSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
-): Promise<true | void> {
+): true | void {
   const { node, setup, upgrade } = options;
   if (node && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
@@ -280,9 +287,9 @@ export async function nodeSetupOrUpgradeProjectHandler(
   }
 }
 
-export async function pythonSetupOrUpgradeProjectHandler(
+export function pythonSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
-): Promise<true | void> {
+): true | void {
   const { python, setup, upgrade } = options;
   if (python && (setup || upgrade)) {
     const startPP = acquireProjectPath(options);
@@ -316,9 +323,9 @@ export async function pythonSetupOrUpgradeProjectHandler(
   }
 }
 
-export async function ctlVersionHandler(
+export function ctlVersionHandler(
   options: cli.DocOptions,
-): Promise<true | void> {
+): true | void {
   const { "--version": version } = options;
   if (version) {
     console.log($VERSION);
