@@ -767,10 +767,10 @@ export function enrichDenoProjectByVsCodePlugin(
 //       # To make the libraries back to polyrepos
 //       "https://denopkg.com/gov-suite/$1/mod.ts"
 
-export async function denoRewriteImportsAsMonoRepo(
+export function denoRewriteImportsAsMonoRepo(
   ctx: { projectHome: string },
   depsGlob = "**/*/deps{-test,}.ts",
-): Promise<true | void> {
+): true | void {
   const matchURL = "https://denopkg.com/gov-suite/\\(.*\\)\\(@.*\\)/";
   for (const we of fs.expandGlobSync(depsGlob)) {
     if (we.isFile) {
