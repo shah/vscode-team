@@ -1,4 +1,4 @@
-import { fs, path } from "./deps.ts";
+import { fs, path, safety } from "./deps.ts";
 import * as dl from "./download.ts";
 import * as vscConfig from "./vscode-settings.ts";
 import type * as reactVscodeSettings from "./react-settings.ts";
@@ -42,9 +42,7 @@ export interface ProjectPath {
   readonly absProjectPathExists: boolean;
 }
 
-export function isProjectPath(o: unknown): o is ProjectPath {
-  return o && typeof o === "object" && "isProjectPath" in o;
-}
+export const isProjectPath = safety.typeGuard<ProjectPath>("isProjectPath");
 
 /**
  * Prepare a project path.
@@ -111,11 +109,9 @@ export interface VsCodeProjectWorkTree extends ProjectPath {
   };
 }
 
-export function isVsCodeProjectWorkTree(
-  o: unknown,
-): o is VsCodeProjectWorkTree {
-  return o && typeof o === "object" && "isVsCodeProjectWorkTree" in o;
-}
+export const isVsCodeProjectWorkTree = safety.typeGuard<VsCodeProjectWorkTree>(
+  "isVsCodeProjectWorkTree",
+);
 
 /**
  * Take a ProjectPath and enrich it as a Visual Studio Code work tree
@@ -186,9 +182,9 @@ export interface GitWorkTree extends ProjectPath {
   };
 }
 
-export function isGitWorkTree(o: unknown): o is GitWorkTree {
-  return o && typeof o === "object" && "isGitWorkTree" in o;
-}
+export const isGitWorkTree = safety.typeGuard<GitWorkTree>(
+  "isGitWorkTree",
+);
 
 /**
  * Take a ProjectPath and enrich it as a Git work tree if appropriate.
@@ -305,9 +301,9 @@ export interface TypeScriptProject extends ProjectPath {
   readonly tsConfigFileName?: FsPathAndFileName;
 }
 
-export function isTypeScriptProject(o: unknown): o is TypeScriptProject {
-  return o && typeof o === "object" && "isTypeScriptProject" in o;
-}
+export const isTypeScriptProject = safety.typeGuard<TypeScriptProject>(
+  "isTypeScriptProject",
+);
 
 /**
  * Take a ProjectPath and enrich it as a TypeScript project
@@ -339,37 +335,35 @@ export interface DenoProject extends ProjectPath, TypeScriptProject {
   readonly updateDepsCandidates: () => PolyglotFile[];
 }
 
-export function isDenoProject(o: unknown): o is DenoProject {
-  return o && typeof o === "object" && "isDenoProject" in o;
-}
+export const isDenoProject = safety.typeGuard<DenoProject>(
+  "isDenoProject",
+);
 
 export interface DenoProjectByVsCodePlugin extends DenoProject {
   readonly isDenoProjectByVsCodePlugin: true;
 }
 
-export function isDenoProjectByVsCodePlugin(
-  o: unknown,
-): o is DenoProjectByVsCodePlugin {
-  return o && typeof o === "object" && "isDenoProjectByVsCodePlugin" in o;
-}
+export const isDenoProjectByVsCodePlugin = safety.typeGuard<
+  DenoProjectByVsCodePlugin
+>(
+  "isDenoProjectByVsCodePlugin",
+);
 
 export interface DenoProjectByConvention extends DenoProject {
   readonly isDenoProjectByConvention: true;
 }
 
-export function isDenoProjectByConvention(
-  o: unknown,
-): o is DenoProjectByConvention {
-  return o && typeof o === "object" && "isDenoProjectByConvention" in o;
-}
+export const isDenoProjectByConvention = safety.typeGuard<
+  DenoProjectByConvention
+>(
+  "isDenoProjectByConvention",
+);
 
 export interface HugoProject extends ProjectPath {
   readonly isHugoProject: true;
 }
 
-export function isHugoProject(o: unknown): o is HugoProject {
-  return o && typeof o === "object" && "isHugoProject" in o;
-}
+export const isHugoProject = safety.typeGuard<HugoProject>("isHugoProject");
 
 export function enrichHugoProject(
   ctx: { absProjectPath: FsPathAndFileName },
@@ -431,9 +425,7 @@ export interface ReactProject extends ProjectPath {
   };
 }
 
-export function isReactProject(o: unknown): o is ReactProject {
-  return o && typeof o === "object" && "isReactProject" in o;
-}
+export const isReactProject = safety.typeGuard<ReactProject>("isReactProject");
 
 export function enrichReactProject(
   ctx: { absProjectPath: FsPathAndFileName },
@@ -520,9 +512,7 @@ export interface NodeProject extends ProjectPath {
   };
 }
 
-export function isNodeProject(o: unknown): o is NodeProject {
-  return o && typeof o === "object" && "isNodeProject" in o;
-}
+export const isNodeProject = safety.typeGuard<NodeProject>("isNodeProject");
 
 export function enrichNodeProject(
   ctx: { absProjectPath: FsPathAndFileName },
@@ -646,9 +636,9 @@ export interface PythonProject extends ProjectPath {
   };
 }
 
-export function isPythonProject(o: unknown): o is PythonProject {
-  return o && typeof o === "object" && "isPythonProject" in o;
-}
+export const isPythonProject = safety.typeGuard<PythonProject>(
+  "isPythonProject",
+);
 
 export function enrichPythonProject(
   ctx: { absProjectPath: FsPathAndFileName },
@@ -816,19 +806,15 @@ export interface NpmProject extends ProjectPath {
   readonly npmPackageConfig: NpmPackageConfig;
 }
 
-export function isNpmProject(o: unknown): o is NpmProject {
-  return o && typeof o === "object" && "isNpmProject" in o;
-}
+export const isNpmProject = safety.typeGuard<NpmProject>("isNpmProject");
 
 export interface NpmPublishableProject extends NpmProject {
   readonly isNpmPublishableProject: true;
 }
 
-export function isNpmPublishableProject(
-  o: unknown,
-): o is NpmPublishableProject {
-  return o && typeof o === "object" && "isNpmPublishableProject" in o;
-}
+export const isNpmPublishableProject = safety.typeGuard<NpmPublishableProject>(
+  "isNpmPublishableProject",
+);
 
 /**
  * Take a ProjectPath and enrich it as a NodeJS NPM project if appropriate.
