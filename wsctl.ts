@@ -15,7 +15,7 @@ Usage:
   wsctl setup <workspaces-home-path> <repos-home-path> [--no-pull] [--create-repos-path] [--dry-run] [--verbose]
   wsctl vscws inspect folders <file.code-workspace>
   wsctl vscws settings sync (deno|auto) <file.code-workspace> [--tag=<tag>] [--dry-run] [--verbose]
-  wsctl vscws git clone <file.code-workspace> <repos-home-path> [--create-repos-path] [--dry-run] [--verbose]
+  wsctl vscws git clone <file.code-workspace> <repos-home-path> [--recurse-submodules] [--create-repos-path] [--dry-run] [--verbose]
   wsctl vscws git fetch <file.code-workspace> [--dry-run]
   wsctl vscws git pull <file.code-workspace> [--dry-run]
   wsctl vscws git status <file.code-workspace> [--dry-run]
@@ -49,6 +49,7 @@ export interface CommandHandler {
   (options: DocOptions): Promise<true | void>;
 }
 
+// deno-lint-ignore require-await
 export async function vscwsInspectFoldersHandler(
   options: DocOptions,
 ): Promise<true | void> {
@@ -68,6 +69,7 @@ export async function vscwsInspectFoldersHandler(
   }
 }
 
+// deno-lint-ignore require-await
 export async function setupHandler(
   options: DocOptions,
 ): Promise<true | void> {
@@ -114,6 +116,7 @@ export async function vscwsGitCloneHandler(
     "<file.code-workspace>": wsFileName,
     "<repos-home-path>": reposHomePath,
     "--create-repos-path": createReposPath,
+    "--recurse-submodules": recurseSubmodules,
     "--dry-run": dryRun,
     "--verbose": verbose,
   } = options;
@@ -124,6 +127,7 @@ export async function vscwsGitCloneHandler(
           ? wsFileName
           : [wsFileName.toString()],
         reposHomePath: reposHomePath ? reposHomePath.toString() : ".",
+        recurseSubmodules: recurseSubmodules ? true : false,
         dryRun: dryRun ? true : false,
         verbose: verbose ? true : false,
         reposHomePathDoesNotExistHandler: () => {

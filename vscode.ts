@@ -1,5 +1,5 @@
 import * as prj from "./project.ts";
-import { fs, path, tsdsh } from "./deps.ts";
+import { fs, path, safety, tsdsh } from "./deps.ts";
 
 export type VsCodeWorkspaceFsPFN = prj.FsPathAndFileName;
 
@@ -210,6 +210,14 @@ export interface GitReposContext {
   ) => prj.RecoverableErrorHandlerResult;
 }
 
+export interface GitReposSubmodulesContext extends GitReposContext {
+  readonly recurseSubmodules: boolean;
+}
+
+export const isGitReposSubmodulesContext = safety.typeGuard<
+  GitReposSubmodulesContext
+>("reposHomePath", "recurseSubmodules");
+
 export function isValidGitReposContext(
   ctx: GitReposContext & { readonly verbose: boolean },
 ): boolean {
@@ -301,7 +309,7 @@ export async function setupWorkspaces(
 export async function gitCloneVsCodeFolders(
   ctx:
     & VsCodeWorkspacesContext
-    & GitReposContext
+    & (GitReposContext | GitReposSubmodulesContext)
     & {
       readonly dryRun: boolean;
       readonly verbose: boolean;
@@ -333,14 +341,19 @@ export async function gitCloneVsCodeFolders(
           Deno.mkdirSync(repoPathParent, { recursive: true });
         }
       }
+      const submodulesArgs = isGitReposSubmodulesContext(ctx)
+        ? (ctx.recurseSubmodules ? " --recurse-submodules" : "")
+        : "";
       rsCmdOptions = createRunShellCmdOptionsBlockHeader(
         vscwsFolderCtx,
         rsCmdOptions,
-        `Cloned https://${vscwsFolderCtx.folder.path} into ${repoPath}`,
+        `Cloned https://${vscwsFolderCtx.folder.path} into ${repoPath} (${
+          submodulesArgs ? "with" : "without"
+        } submodules)`,
       );
       cloneRuns.push(
         tsdsh.runShellCommandSafely(
-          `git clone --quiet https://${vscwsFolderCtx.folder.path} ${repoPath}`,
+          `git clone --quiet${submodulesArgs} https://${vscwsFolderCtx.folder.path} ${repoPath}`,
           rsCmdOptions,
         ),
       );
@@ -374,7 +387,7 @@ export async function workspaceFoldersGitCommandHandler(
       : [wsFileName.toString()],
   }).forEach((ctx) => {
     if (prj.isGitWorkTree(ctx.folder)) {
-      const gitCommand: string =
+      const gitCommand =
         `git --git-dir=${ctx.folder.gitDir} --work-tree=${ctx.folder.gitWorkTree} ${gitCmd}`;
       rsCmdOptions = createRunShellCmdOptionsBlockHeader(ctx, rsCmdOptions);
       cmdRuns.push(
