@@ -1,8 +1,17 @@
-import { docopt as cli, tsdsh } from "./deps.ts";
+import { docopt as cli, govnSvcVersion as gsv, tsdsh } from "./deps.ts";
 import * as mod from "./mod.ts";
 import { isGitWorkTree, isHugoProject } from "./project.ts";
 import { nodeGitPrecommitScript } from "./node-settings.ts";
 import { pythonGitPrecommitScript } from "./python-settings.ts";
+
+export function determineVersion(
+  importMetaURL = import.meta.url,
+): Promise<string> {
+  return gsv.determineVersionFromRepoTag(
+    importMetaURL,
+    { repoIdentity: "shah/vscode-team" },
+  );
+}
 
 // TODO: Use the new `cli.ts` reusable CLI instead of (older) custom one here.
 //       See example in configctl.ts of how to properly organize the CLI so
@@ -10,9 +19,8 @@ import { pythonGitPrecommitScript } from "./python-settings.ts";
 
 // TODO: find way to automatically update this, e.g. using something like
 //       git describe --exact-match --abbrev=0
-const $VERSION = "v1.0.3";
 const docoptSpec = `
-Visual Studio Team Projects Controller ${$VERSION}.
+Visual Studio Team Projects Controller ${await determineVersion()}.
 
 Usage:
   projectctl inspect [<project-home>]
@@ -59,6 +67,7 @@ export function acquireProjectPath(options: cli.DocOptions): mod.ProjectPath {
   );
 }
 
+// deno-lint-ignore require-await
 export async function inspectProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -116,6 +125,7 @@ export async function publishProjectHandler(
   }
 }
 
+// deno-lint-ignore require-await
 export async function denoSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -176,6 +186,7 @@ export async function denoUpdateDependenciesHandler(
   }
 }
 
+// deno-lint-ignore require-await
 export async function hugoSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -205,6 +216,7 @@ export async function hugoSetupOrUpgradeProjectHandler(
   }
 }
 
+// deno-lint-ignore require-await
 export async function reactSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -234,6 +246,7 @@ export async function reactSetupOrUpgradeProjectHandler(
   }
 }
 
+// deno-lint-ignore require-await
 export async function nodeSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -280,6 +293,7 @@ export async function nodeSetupOrUpgradeProjectHandler(
   }
 }
 
+// deno-lint-ignore require-await
 export async function pythonSetupOrUpgradeProjectHandler(
   options: cli.DocOptions,
 ): Promise<true | void> {
@@ -321,7 +335,7 @@ export async function ctlVersionHandler(
 ): Promise<true | void> {
   const { "--version": version } = options;
   if (version) {
-    console.log($VERSION);
+    console.log(await determineVersion());
     return true;
   }
 }

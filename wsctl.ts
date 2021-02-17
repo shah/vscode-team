@@ -1,15 +1,21 @@
-import docopt, {
-  DocOptions,
-} from "https://denopkg.com/Eyal-Shalev/docopt.js@v1.0.1/src/docopt.ts";
+import { docopt as cli, govnSvcVersion as gsv } from "./deps.ts";
 import * as mod from "./mod.ts";
 
 // TODO: Use the new `cli.ts` reusable CLI instead of (older) custom one here.
 //       See example in configctl.ts of how to properly organize the CLI so
 //       that the code works in a CLI or as a library.
 
-const $VERSION = "v1.0.3";
+export function determineVersion(
+  importMetaURL = import.meta.url,
+): Promise<string> {
+  return gsv.determineVersionFromRepoTag(
+    importMetaURL,
+    { repoIdentity: "shah/vscode-team" },
+  );
+}
+
 const docoptSpec = `
-Visual Studio Team Workspaces Controller ${$VERSION}.
+Visual Studio Team Workspaces Controller ${await determineVersion()}.
 
 Usage:
   wsctl setup <workspaces-home-path> <repos-home-path> [--no-pull] [--create-repos-path] [--dry-run] [--verbose]
@@ -46,12 +52,12 @@ Options:
 `;
 
 export interface CommandHandler {
-  (options: DocOptions): Promise<true | void>;
+  (options: cli.DocOptions): Promise<true | void>;
 }
 
 // deno-lint-ignore require-await
 export async function vscwsInspectFoldersHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const { vscws, inspect, folders, "<file.code-workspace>": wsFileName } =
     options;
@@ -71,7 +77,7 @@ export async function vscwsInspectFoldersHandler(
 
 // deno-lint-ignore require-await
 export async function setupHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const {
     setup,
@@ -107,7 +113,7 @@ export async function setupHandler(
 }
 
 export async function vscwsGitCloneHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const {
     vscws,
@@ -149,7 +155,7 @@ export async function vscwsGitCloneHandler(
 }
 
 export async function vscwsGitStatusHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const {
     vscws,
@@ -169,7 +175,7 @@ export async function vscwsGitStatusHandler(
 }
 
 export async function vscwsGitFetchPullHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const {
     vscws,
@@ -192,7 +198,7 @@ export async function vscwsGitFetchPullHandler(
 }
 
 export async function vscwsGitCommitHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const {
     vscws,
@@ -233,7 +239,7 @@ export async function vscwsGitCommitHandler(
 }
 
 export async function vscwsNpmSingleCommandHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const {
     vscws,
@@ -285,7 +291,7 @@ export async function vscwsNpmSingleCommandHandler(
 }
 
 export async function vscwsNpmVersionHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const {
     vscws,
@@ -316,7 +322,7 @@ export async function vscwsNpmVersionHandler(
 }
 
 export async function vscwsDenoSingleCommandHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const {
     vscws,
@@ -345,7 +351,7 @@ export async function vscwsDenoSingleCommandHandler(
 }
 
 export async function vscwsDenoUpdateHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const {
     vscws,
@@ -377,7 +383,7 @@ export async function vscwsDenoUpdateHandler(
 }
 
 export async function vscwsSettingsSyncHandler(
-  options: DocOptions,
+  options: cli.DocOptions,
 ): Promise<true | void> {
   const {
     vscws,
@@ -415,6 +421,16 @@ export async function vscwsSettingsSyncHandler(
   }
 }
 
+export async function vscwsVersionHandler(
+  options: cli.DocOptions,
+): Promise<true | void> {
+  const { "--version": version } = options;
+  if (version) {
+    console.log(await determineVersion());
+    return true;
+  }
+}
+
 if (import.meta.main) {
   const handlers: CommandHandler[] = [
     vscwsInspectFoldersHandler,
@@ -427,10 +443,11 @@ if (import.meta.main) {
     vscwsDenoSingleCommandHandler,
     vscwsDenoUpdateHandler,
     vscwsSettingsSyncHandler,
+    vscwsVersionHandler,
     setupHandler,
   ];
   try {
-    const options = docopt(docoptSpec);
+    const options = cli.default(docoptSpec);
     let handled: true | void;
     for (const handler of handlers) {
       handled = await handler(options);
