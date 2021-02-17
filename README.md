@@ -133,7 +133,7 @@ Usage:
   wsctl vscws inspect folders <file.code-workspace>
   wsctl vscws settings sync (deno|auto) <file.code-workspace> [--tag=<tag>] [--dry-run] [--verbose]
   wsctl vscws git clone <file.code-workspace> <repos-home-path> [--recurse-submodules] [--create-repos-path] [--dry-run] [--verbose]
-  wsctl vscws git pull <file.code-workspace> [--dry-run]
+  wsctl vscws git pull <file.code-workspace> [--recurse-submodules] [--dry-run]
   wsctl vscws git status <file.code-workspace> [--dry-run]
   wsctl vscws git commit <message> <file.code-workspace> [--dry-run]
   wsctl vscws git add-commit <message> <file.code-workspace> [--dry-run]

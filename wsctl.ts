@@ -23,7 +23,7 @@ Usage:
   wsctl vscws settings sync (deno|auto) <file.code-workspace> [--tag=<tag>] [--dry-run] [--verbose]
   wsctl vscws git clone <file.code-workspace> <repos-home-path> [--recurse-submodules] [--create-repos-path] [--dry-run] [--verbose]
   wsctl vscws git fetch <file.code-workspace> [--dry-run]
-  wsctl vscws git pull <file.code-workspace> [--dry-run]
+  wsctl vscws git pull <file.code-workspace> [--recurse-submodules] [--dry-run]
   wsctl vscws git status <file.code-workspace> [--dry-run]
   wsctl vscws git commit <message> <file.code-workspace> [--dry-run]
   wsctl vscws git add-commit <message> <file.code-workspace> [--dry-run]
@@ -183,6 +183,7 @@ export async function vscwsGitFetchPullHandler(
     pull,
     fetch,
     "<file.code-workspace>": wsFileName,
+    "--recurse-submodules": recurseSubmodules,
     "--dry-run": dryRun,
   } = options;
   if (vscws && git && (pull || fetch) && wsFileName) {
@@ -190,7 +191,9 @@ export async function vscwsGitFetchPullHandler(
       false, // fetch and pull have their own dry run
       wsFileName as (string[] | string),
       pull
-        ? `pull${dryRun ? " --dry-run" : ""}`
+        ? `pull${recurseSubmodules ? " --recurse-submodules" : ""}${
+          dryRun ? " --dry-run" : ""
+        }`
         : `fetch${dryRun ? " --dry-run" : ""}`,
     );
     return true;
