@@ -191,9 +191,11 @@ export async function vscwsGitFetchPullHandler(
       false, // fetch and pull have their own dry run
       wsFileName as (string[] | string),
       pull
-        ? `pull${recurseSubmodules ? " --recurse-submodules" : ""}${
-          dryRun ? " --dry-run" : ""
-        }`
+        ? `pull${
+          recurseSubmodules
+            ? " --recurse-submodules && git submodule update --recursive"
+            : ""
+        }${dryRun ? " --dry-run" : ""}`
         : `fetch${dryRun ? " --dry-run" : ""}`,
     );
     return true;
