@@ -191,13 +191,18 @@ export async function vscwsGitFetchPullHandler(
       false, // fetch and pull have their own dry run
       wsFileName as (string[] | string),
       pull
-        ? `pull${
-          recurseSubmodules
-            ? " --recurse-submodules && git submodule update --recursive"
-            : ""
-        }${dryRun ? " --dry-run" : ""}`
+        ? `pull${recurseSubmodules ? " --recurse-submodules" : ""}${
+          dryRun ? " --dry-run" : ""
+        }`
         : `fetch${dryRun ? " --dry-run" : ""}`,
     );
+    if (pull && recurseSubmodules) {
+      await mod.workspaceFoldersGitCommandHandler(
+        dryRun ? true : false,
+        wsFileName as (string[] | string),
+        `git submodule update --recursive`,
+      );
+    }
     return true;
   }
 }
