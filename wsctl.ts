@@ -200,7 +200,7 @@ export async function vscwsGitFetchPullHandler(
       await mod.workspaceFoldersGitCommandHandler(
         dryRun ? true : false,
         wsFileName as (string[] | string),
-        `git submodule update --recursive`,
+        `submodule update --recursive`,
       );
     }
     return true;
