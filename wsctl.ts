@@ -169,6 +169,7 @@ export async function vscwsGitStatusHandler(
       dryRun ? true : false,
       wsFileName as (string[] | string),
       "status -s",
+      false,
     );
     return true;
   }
@@ -195,12 +196,14 @@ export async function vscwsGitFetchPullHandler(
           dryRun ? " --dry-run" : ""
         }`
         : `fetch${dryRun ? " --dry-run" : ""}`,
+      false,
     );
     if (pull && recurseSubmodules) {
       await mod.workspaceFoldersGitCommandHandler(
         dryRun ? true : false,
         wsFileName as (string[] | string),
         `submodule update --recursive`,
+        true, // there's a bug in submodule which requires cwd to be Git Work Tree
       );
     }
     return true;
@@ -230,18 +233,21 @@ export async function vscwsGitCommitHandler(
         false, // we'll use git commit --dry-run instead
         wsFileName as (string[] | string),
         `add${gitDryRun} .`,
+        false,
       );
     }
     await mod.workspaceFoldersGitCommandHandler(
       false, // we'll use git commit --dry-run instead
       wsFileName as (string[] | string),
       `commit${gitDryRun} -am "${message}"`,
+      false,
     );
     if (addCommitPush) {
       await mod.workspaceFoldersGitCommandHandler(
         false, // we'll use git commit --dry-run instead
         wsFileName as (string[] | string),
         `push${gitDryRun}`,
+        false,
       );
     }
     return true;

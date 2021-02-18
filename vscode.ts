@@ -376,6 +376,7 @@ export async function workspaceFoldersGitCommandHandler(
   dryRun: boolean,
   wsFileName: prj.FsPathOnly[] | prj.FsPathOnly,
   gitCmd: string,
+  cdToWorkTree: boolean,
 ): Promise<void> {
   const cmdRuns: Promise<tsdsh.RunShellCommandResult>[] = [];
   let rsCmdOptions: tsdsh.RunShellCommandOptions = {
@@ -391,7 +392,15 @@ export async function workspaceFoldersGitCommandHandler(
         `git --git-dir=${ctx.folder.gitDir} --work-tree=${ctx.folder.gitWorkTree} ${gitCmd}`;
       rsCmdOptions = createRunShellCmdOptionsBlockHeader(ctx, rsCmdOptions);
       cmdRuns.push(
-        tsdsh.runShellCommandSafely(gitCommand, rsCmdOptions),
+        tsdsh.runShellCommandSafely(
+          cdToWorkTree
+            ? {
+              cmd: tsdsh.commandComponents(gitCommand),
+              cwd: ctx.folder.gitWorkTree,
+            }
+            : gitCommand,
+          rsCmdOptions,
+        ),
       );
     }
   });
