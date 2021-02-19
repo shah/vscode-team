@@ -202,7 +202,7 @@ export async function vscwsGitFetchPullHandler(
       await mod.workspaceFoldersGitCommandHandler(
         dryRun ? true : false,
         wsFileName as (string[] | string),
-        `submodule update --recursive`,
+        `submodule update --remote`,
         true, // there's a bug in submodule which requires cwd to be Git Work Tree
       );
     }
